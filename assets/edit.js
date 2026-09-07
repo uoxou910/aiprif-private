@@ -404,23 +404,32 @@ function readDataURL(file){
 }
 
 async function addFiles(files){
-  for(const file of [...files]){
+  const list=[...files];
+  if(!list.length)return;
+
+  let completed=0;
+  for(const file of list){
     try{
-      toast('アップロード中…');
+      toast(`アップロード中… ${completed+1}/${list.length}`);
       const dataUrl=await readDataURL(file);
+
+      // PNG・解像度・画質はそのまま。余計な画像変換処理はしません。
       const j=await post('upload',{
         filename:file.name,
-        mimeType:file.type||'image/jpeg',
+        mimeType:file.type||'image/png',
         data:dataUrl
       });
+
       cards.unshift(j.card);
+      completed++;
     }catch(e){
       alert('アップロードに失敗しました：'+e.message);
     }
   }
 
+  // 全件アップロード後に一度だけ管理画面を描画します。
   render();
-  toast('追加しました');
+  toast(completed===list.length?'追加しました':`${completed}/${list.length}件追加しました`);
 }
 
 async function deleteOne(id){
