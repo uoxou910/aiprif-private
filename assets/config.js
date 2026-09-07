@@ -1,4 +1,4 @@
 window.FRECA_CONFIG = {
-  gasUrl: "YOUR_GAS_WEB_APP_URL",
-  appName: "フレカ置き場"
+  gasUrl: "https://script.google.com/macros/s/AKfycbxAUs73KuOUGSKa-1O20lKeSSQ6OZZG8lRMElnUrlu9ADtXkAvfpqO-LPfJU1kB1KAE/exec",
+  appName: "フレカ置き場2"
 };
