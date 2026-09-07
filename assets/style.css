@@ -1289,3 +1289,13 @@ html,body{
   font-size:11px;
   text-align:center;
 }
+
+
+/* iPhone Safari: フォーム入力時の自動ズーム防止 */
+@supports (-webkit-touch-callout:none){
+  input,
+  select,
+  textarea{
+    font-size:16px!important;
+  }
+}
