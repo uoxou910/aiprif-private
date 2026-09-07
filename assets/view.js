@@ -13,24 +13,112 @@ function normalizeSearchText(s){
     );
 }
 
-async function load(){
+let viewPassword=sessionStorage.getItem('freca_view_password')||'';
+
+async function apiGet(action,params={}){
+  const u=new URL(C.gasUrl);
+  u.searchParams.set('action',action);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  u.searchParams.set('_ts',String(Date.now()));
+  const r=await fetch(u.toString(),{redirect:'follow',cache:'no-store'});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.error||'API error');
+  return j;
+}
+
+function renderViewLogin(error=''){
+  document.body.innerHTML=`
+    <main class="viewer-login-page">
+      <div class="viewer-login-box">
+        <div class="viewer-login-title">${esc(C.appName||'フレカ置き場')}</div>
+        <div class="viewer-login-sub">閲覧パスワードを入力してください</div>
+        ${error?`<div class="viewer-login-error">${esc(error)}</div>`:''}
+        <label class="viewer-login-label">
+          閲覧パスワード
+          <input id="viewPasswordInput"
+                 type="password"
+                 autocomplete="current-password"
+                 placeholder="パスワード">
+        </label>
+        <button class="viewer-login-button" id="viewLoginButton">見る</button>
+      </div>
+    </main>`;
+
+  const login=async()=>{
+    const p=$('#viewPasswordInput').value;
+    if(!p){
+      renderViewLogin('パスワードを入力してください。');
+      return;
+    }
+
+    try{
+      await apiGet('viewAuth',{viewPassword:p});
+      viewPassword=p;
+      sessionStorage.setItem('freca_view_password',p);
+      await loadCards();
+    }catch(e){
+      renderViewLogin('パスワードが違います。');
+    }
+  };
+
+  $('#viewLoginButton').onclick=login;
+  $('#viewPasswordInput').onkeydown=e=>{
+    if(e.key==='Enter')login();
+  };
+}
+
+async function loadCards(){
   document.body.innerHTML='<div class="loading">読み込み中...</div>';
   try{
-    const r=await fetch(C.gasUrl+'?action=list');
-    const j=await r.json();
-    cards=Array.isArray(j)?j:(j.cards||[]);
+    const j=await apiGet('list',{viewPassword});
+    cards=j.cards||[];
     buildShell();
     renderResults();
   }catch(e){
-    document.body.innerHTML='<div class="empty">読み込みに失敗しました</div>';
-    console.error(e);
+    sessionStorage.removeItem('freca_view_password');
+    viewPassword='';
+    if(String(e.message||'').includes('未設定')){
+      renderViewLogin('閲覧パスワードがまだ設定されていません。');
+    }else{
+      renderViewLogin('閲覧パスワードを入力してください。');
+    }
   }
 }
 
+async function load(){
+  if(!C.gasUrl || !/^https:\/\/script\.google\.com\/macros\/s\//.test(C.gasUrl) || C.gasUrl.includes('YOUR_')){
+    document.body.innerHTML='<div class="empty">assets/config.js にサイトB用GAS URLを設定してください</div>';
+    return;
+  }
+
+  if(viewPassword){
+    try{
+      await apiGet('viewAuth',{viewPassword});
+      await loadCards();
+      return;
+    }catch(e){
+      sessionStorage.removeItem('freca_view_password');
+      viewPassword='';
+    }
+  }
+
+  renderViewLogin();
+}
+
 function filteredCards(){
+  const nq=normalizeSearchText(q);
+
+  // 検索中はキャラタブの選択に関係なく、
+  // 全カードから「キャラ名 + コーデ名」を検索する。
+  if(q){
+    return cards.filter(x=>
+      normalizeSearchText(`${x.chara} ${x.code}`).includes(nq)
+    );
+  }
+
+  // 検索していない時だけキャラタブで絞り込む。
   return cards.filter(x=>
-    (!chara||x.chara===chara) &&
-    (!q||normalizeSearchText(x.code).includes(normalizeSearchText(q)))
+    !chara || x.chara===chara
   );
 }
 
@@ -59,7 +147,7 @@ function buildShell(){
     </header>
 
     <div class="hero">
-      <div class="search">⌕<input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="コーデ名で検索"></div>
+      <div class="search">⌕<input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="キャラ名・コーデ名で検索"></div>
     </div>
 
     <div class="tabs" id="tabs">
