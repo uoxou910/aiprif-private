@@ -51,21 +51,7 @@ function renderViewLogin(error=''){
       return;
     }
 
-    // 認証エラーと、認証後のカード読み込みエラーを分ける。
-    try{
-      await apiGet('viewAuth',{viewPassword:p});
-    }catch(e){
-      const msg=String(e.message||'');
-      if(msg.includes('未設定')){
-        renderViewLogin('閲覧パスワードがまだ設定されていません。');
-      }else if(msg.includes('閲覧パスワードが違います')){
-        renderViewLogin('パスワードが違います。');
-      }else{
-        renderViewLogin('認証に失敗しました：'+msg);
-      }
-      return;
-    }
-
+    // viewAuth は使わず、list 取得そのものでパスワード確認する。
     viewPassword=p;
     sessionStorage.setItem('freca_view_password',p);
     await loadCards();
@@ -105,14 +91,8 @@ async function load(){
   }
 
   if(viewPassword){
-    try{
-      await apiGet('viewAuth',{viewPassword});
-      await loadCards();
-      return;
-    }catch(e){
-      sessionStorage.removeItem('freca_view_password');
-      viewPassword='';
-    }
+    await loadCards();
+    return;
   }
 
   renderViewLogin();
