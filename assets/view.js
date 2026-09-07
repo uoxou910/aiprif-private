@@ -13,95 +13,18 @@ function normalizeSearchText(s){
     );
 }
 
-let viewPassword=sessionStorage.getItem('freca_view_password')||'';
-
-async function apiGet(action,params={}){
-  const u=new URL(C.gasUrl);
-  u.searchParams.set('action',action);
-  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u.toString(),{redirect:'follow'});
-  const j=await r.json();
-  if(!j.ok)throw new Error(j.error||'API error');
-  return j;
-}
-
-function renderViewLogin(error=''){
-  document.body.innerHTML=`
-    <main class="viewer-login-page">
-      <div class="viewer-login-box">
-        <div class="viewer-login-title">${esc(C.appName||'フレカ置き場')}</div>
-        <div class="viewer-login-sub">閲覧パスワードを入力してください</div>
-        ${error?`<div class="viewer-login-error">${esc(error)}</div>`:''}
-        <label class="viewer-login-label">
-          閲覧パスワード
-          <input id="viewPasswordInput"
-                 type="password"
-                 autocomplete="current-password"
-                 placeholder="パスワード">
-        </label>
-        <button class="viewer-login-button" id="viewLoginButton">見る</button>
-      </div>
-    </main>`;
-
-  const login=async()=>{
-    const p=$('#viewPasswordInput').value;
-    if(!p){
-      renderViewLogin('パスワードを入力してください。');
-      return;
-    }
-
-    try{
-      await apiGet('viewAuth',{viewPassword:p});
-      viewPassword=p;
-      sessionStorage.setItem('freca_view_password',p);
-      await loadCards();
-    }catch(e){
-      renderViewLogin('パスワードが違います。');
-    }
-  };
-
-  $('#viewLoginButton').onclick=login;
-  $('#viewPasswordInput').onkeydown=e=>{
-    if(e.key==='Enter')login();
-  };
-}
-
-async function loadCards(){
+async function load(){
   document.body.innerHTML='<div class="loading">読み込み中...</div>';
   try{
-    const j=await apiGet('list',{viewPassword});
-    cards=j.cards||[];
+    const r=await fetch(C.gasUrl+'?action=list');
+    const j=await r.json();
+    cards=Array.isArray(j)?j:(j.cards||[]);
     buildShell();
     renderResults();
   }catch(e){
-    sessionStorage.removeItem('freca_view_password');
-    viewPassword='';
-    if(String(e.message||'').includes('未設定')){
-      renderViewLogin('閲覧パスワードがまだ設定されていません。');
-    }else{
-      renderViewLogin('閲覧パスワードを入力してください。');
-    }
+    document.body.innerHTML='<div class="empty">読み込みに失敗しました</div>';
+    console.error(e);
   }
-}
-
-async function load(){
-  if(!C.gasUrl || !/^https:\/\/script\.google\.com\/macros\/s\//.test(C.gasUrl) || C.gasUrl.includes('YOUR_')){
-    document.body.innerHTML='<div class="empty">assets/config.js にサイトB用GAS URLを設定してください</div>';
-    return;
-  }
-
-  if(viewPassword){
-    try{
-      await apiGet('viewAuth',{viewPassword});
-      await loadCards();
-      return;
-    }catch(e){
-      sessionStorage.removeItem('freca_view_password');
-      viewPassword='';
-    }
-  }
-
-  renderViewLogin();
 }
 
 function filteredCards(){
