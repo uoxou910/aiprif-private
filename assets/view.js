@@ -20,6 +20,19 @@ function normalizeSearchText(s){
 }
 
 let viewPassword=sessionStorage.getItem('freca_view_password')||'';
+
+// 認証済みの閲覧ページでのみ画像キャッシュを有効にする。
+async function enableImageCache(){
+  if(!('serviceWorker' in navigator) || !viewPassword)return;
+  try{
+    await navigator.serviceWorker.register('./image-cache-sw.js',{scope:'./'});
+  }catch(e){console.warn('画像キャッシュを有効化できませんでした:',e);}
+}
+async function clearImageCache(){
+  if(!('caches' in window))return;
+  try{await caches.delete('freca-siteb-thumbnails-v1');}catch(e){}
+}
+
 const CARD_CACHE_KEY='freca_siteB_cards_v1';
 
 function readCachedCards(){
@@ -101,6 +114,7 @@ async function loadCards(useCache=true){
     cards=cached;
     buildShell();
     renderResults();
+    enableImageCache();
   }else{
     document.body.innerHTML='<div class="loading">読み込み中...</div>';
   }
@@ -112,6 +126,7 @@ async function loadCards(useCache=true){
     const changed=JSON.stringify(fresh)!==JSON.stringify(cards);
     cards=fresh;
     saveCachedCards(cards);
+    enableImageCache();
     if(!cached){
       buildShell();
       renderResults();
@@ -128,6 +143,7 @@ async function loadCards(useCache=true){
     if(msg.includes('閲覧パスワードが違います') || msg.includes('未設定')){
       // 認証が失効した場合は保存済みカードを残さない。
       clearCachedCards();
+      clearImageCache();
       sessionStorage.removeItem('freca_view_password');
       viewPassword='';
       cards=[];
