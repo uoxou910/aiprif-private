@@ -2,7 +2,13 @@ const C=window.FRECA_CONFIG||{};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let cards=[],q='',chara='',page=1;
-const PAGE=30;
+const PAGE=20;
+
+function thumbUrl(url){
+  const s=String(url||'');
+  const id=s.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w480' : s;
+}
 
 function normalizeSearchText(s){
   return String(s??'')
@@ -14,6 +20,31 @@ function normalizeSearchText(s){
 }
 
 let viewPassword=sessionStorage.getItem('freca_view_password')||'';
+const CARD_CACHE_KEY='freca_siteB_cards_v1';
+
+function readCachedCards(){
+  if(!viewPassword)return null;
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(CARD_CACHE_KEY)||'null');
+    if(saved && saved.gasUrl===C.gasUrl && saved.password===viewPassword && Array.isArray(saved.cards)){
+      return saved.cards;
+    }
+  }catch(e){}
+  return null;
+}
+
+function saveCachedCards(list){
+  try{
+    sessionStorage.setItem(CARD_CACHE_KEY,JSON.stringify({
+      gasUrl:C.gasUrl,password:viewPassword,cards:list
+    }));
+  }catch(e){} // 保存容量不足でも通常表示は継続
+}
+
+function clearCachedCards(){
+  sessionStorage.removeItem(CARD_CACHE_KEY);
+}
+
 
 async function apiGet(action,params={}){
   const u=new URL(C.gasUrl);
@@ -54,7 +85,8 @@ function renderViewLogin(error=''){
     // viewAuth は使わず、list 取得そのものでパスワード確認する。
     viewPassword=p;
     sessionStorage.setItem('freca_view_password',p);
-    await loadCards();
+    clearCachedCards();
+    await loadCards(false);
   };
 
   $('#viewLoginButton').onclick=login;
@@ -63,22 +95,51 @@ function renderViewLogin(error=''){
   };
 }
 
-async function loadCards(){
-  document.body.innerHTML='<div class="loading">読み込み中...</div>';
-  try{
-    const j=await apiGet('list',{viewPassword});
-    cards=j.cards||[];
+async function loadCards(useCache=true){
+  const cached=useCache?readCachedCards():null;
+  if(cached){
+    cards=cached;
     buildShell();
     renderResults();
+  }else{
+    document.body.innerHTML='<div class="loading">読み込み中...</div>';
+  }
+
+  try{
+    // 保存済み一覧を表示した後も、最新の公開カードをGASから取得する。
+    const j=await apiGet('list',{viewPassword});
+    const fresh=Array.isArray(j.cards)?j.cards:[];
+    const changed=JSON.stringify(fresh)!==JSON.stringify(cards);
+    cards=fresh;
+    saveCachedCards(cards);
+    if(!cached){
+      buildShell();
+      renderResults();
+    }else if(changed){
+      // 入力中の検索語・ページ番号を維持して更新する。
+      const search=$('#q');
+      if(search)q=search.value.trim();
+      buildShell();
+      if($('#q'))$('#q').value=q;
+      renderResults();
+    }
   }catch(e){
     const msg=String(e.message||'');
-    sessionStorage.removeItem('freca_view_password');
-    viewPassword='';
-    if(msg.includes('未設定')){
-      renderViewLogin('閲覧パスワードがまだ設定されていません。');
-    }else if(msg.includes('閲覧パスワードが違います')){
-      renderViewLogin('パスワードが違います。');
+    if(msg.includes('閲覧パスワードが違います') || msg.includes('未設定')){
+      // 認証が失効した場合は保存済みカードを残さない。
+      clearCachedCards();
+      sessionStorage.removeItem('freca_view_password');
+      viewPassword='';
+      cards=[];
+      renderViewLogin(msg.includes('未設定')
+        ? '閲覧パスワードがまだ設定されていません。'
+        : 'パスワードが違います。');
+    }else if(cached){
+      // 一時的な通信失敗では、認証済みセッションの保存済み一覧を維持する。
+      console.warn('最新のカード一覧を取得できませんでした:',e);
     }else{
+      sessionStorage.removeItem('freca_view_password');
+      viewPassword='';
       renderViewLogin('カード一覧の読み込みに失敗しました：'+msg);
     }
   }
@@ -143,21 +204,6 @@ function buildShell(){
       <div class="search">⌕<input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="キャラ名・コーデ名で検索"></div>
     </div>
 
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-c="">
-        <span class="tab-icon tab-icon-home" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M3.5 10.7 12 3.8l8.5 6.9v8.8a1 1 0 0 1-1 1h-5v-6h-5v6h-5a1 1 0 0 1-1-1z"/></svg>
-        </span>
-        <span class="tab-label">すべて</span>
-      </button>
-      ${chars.map(c=>`<button class="tab" data-c="${esc(c)}">
-        <span class="tab-icon tab-icon-person" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.8 20c.4-4 2.7-6.2 6.2-6.2s5.8 2.2 6.2 6.2"/></svg>
-        </span>
-        <span class="tab-label">${esc(c)}</span>
-      </button>`).join('')}
-    </div>
-
     <main class="grid" id="grid"></main>
     <div class="pager" id="pager"></div>
 
@@ -183,12 +229,6 @@ function buildShell(){
     },180);
   });
 
-  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
-    chara=b.dataset.c;
-    page=1;
-    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
-    renderResults();
-  });
 
   $('#close').onclick=()=>$('#modal').classList.remove('open');
   $('#modal').onclick=e=>{
@@ -232,9 +272,9 @@ function renderResults(){
     ? list.map((x,i)=>`
       <article class="card" data-id="${x.id}" style="--delay:${Math.min(i,18)*55}ms">
         <div class="card-img"><img
-          src="${esc(x.image_url)}"
-          loading="${i<6?'eager':'lazy'}"
-          fetchpriority="${i<3?'high':'auto'}"
+          src="${esc(thumbUrl(x.image_url))}"
+          loading="${i<2?'eager':'lazy'}"
+          fetchpriority="${i<2?'high':'low'}"
           decoding="async"
         ></div>
         <div class="card-info">
