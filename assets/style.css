@@ -856,3 +856,26 @@ body[data-page="edit"] .card-entry-dialog .dialog-actions {
     max-height:min(50dvh,430px);
   }
 }
+
+/* Site B upload-entry thumbnails can be opened at full preview size. */
+body[data-page="edit"] .card-entry-dialog .site-b-upload-zoom-trigger {
+  appearance:none;
+  padding:0;
+  border:0;
+  cursor:zoom-in;
+  flex-shrink:0;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-zoom-trigger:focus-visible {
+  outline:2px solid #777086;
+  outline-offset:3px;
+}
+body[data-page="edit"] #site-b-upload-zoom {
+  z-index:100;
+}
+body[data-page="edit"] #site-b-upload-zoom img {
+  max-width:min(900px,92vw);
+  max-height:90dvh;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+}
