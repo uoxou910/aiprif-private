@@ -237,7 +237,6 @@ function setupSiteBInputHistory(extra=[]){
  if(!datalists){
   datalists=document.createElement('div');
   datalists.id='site-b-input-history';
-  datalists.hidden=true;
   datalists.innerHTML='<datalist id="site-b-code-history"></datalist><datalist id="site-b-chara-history"></datalist>';
   host.appendChild(datalists);
  }
