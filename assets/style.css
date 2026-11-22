@@ -784,3 +784,33 @@ body[data-page="edit"] .admin-shell .search:focus-within {
 /* Site B: public display has no character navigation bar. */
 body[data-page="view"] { padding-bottom:32px; }
 @media(max-width:699px){ body[data-page="view"] { padding-bottom:34px; } }
+
+/* Site B admin: retain the Site A card layout with just freca management. */
+body[data-page="edit"] .section-head {flex-wrap:wrap;}
+body[data-page="edit"] .site-b-picture {position:relative;}
+body[data-page="edit"] .admin-image {display:grid;place-items:center;width:100%;padding:0;appearance:none;border:0;text-align:center;}
+body[data-page="edit"] .admin-image img {width:100%;height:100%;object-fit:cover;}
+body[data-page="edit"] .site-b-unlisted .admin-image {opacity:.55;}
+body[data-page="edit"] .site-b-selectbox {
+ position:absolute;top:8px;right:8px;z-index:1;
+ min-width:44px;min-height:38px;padding:6px 10px;
+ background:rgba(255,255,255,.94);color:#494350;border:1px solid #ded9e5;
+ border-radius:12px;font-size:12px;box-shadow:0 2px 9px rgba(23,18,30,.10);
+}
+body[data-page="edit"] .site-b-selectbox.selected {background:var(--theme-soft);font-weight:700;}
+body[data-page="edit"] .site-b-bulkbar {
+ position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+ transform:translateX(-50%);z-index:65;display:none;align-items:center;
+ justify-content:center;gap:12px;min-width:280px;max-width:calc(100vw - 24px);
+ padding:10px 14px;border-radius:16px;background:rgba(255,255,255,.97);
+ box-shadow:0 7px 32px rgba(31,25,40,.20);font-size:12px;
+}
+body[data-page="edit"] .site-b-bulkbar.show {display:flex;}
+body[data-page="edit"] .dialog-shade .field {margin:16px 0;}
+body[data-page="edit"] .dialog-shade .dialog {width:min(520px,100%);}
+body[data-page="edit"] #edit-save {min-width:86px;}
+@media(max-width:699px){
+ body[data-page="edit"] .admin-card-grid {gap:25px 14px;}
+ body[data-page="edit"] .section-head .row {justify-content:flex-end;width:100%;}
+ body[data-page="edit"] .section-head .btn {min-height:39px;}
+}
