@@ -202,6 +202,23 @@ async function startPinScreen(){
    event.preventDefault();erase();
   }
  });
+ // The admin page keeps its password only in this tab's sessionStorage.
+ // Re-check it against GAS, rather than trusting a client-side "logged in" flag.
+ // Only a successfully verified admin session can skip the public PIN screen.
+ if(sessionStorage.getItem('freca_admin_password')){
+  waiting=true;
+  message('管理画面のログイン状態を確認しています…');
+  try{
+   await loadPublicCards();
+   unlock();
+   return;
+  }catch(error){
+   // An expired/invalid administrator password does not grant public access.
+   // Fall through to the ordinary public PIN screen.
+   console.warn('管理者認証の再確認に失敗しました',error);
+   message('PINコードを入力してください');
+  }finally{waiting=false;}
+ }
  const saved=sessionStorage.getItem(pinSessionKey);
  if(saved){
   waiting=true;
