@@ -80,29 +80,21 @@ async function init(){
 }
 
 function renderLogin(error=''){
-  document.body.innerHTML=`
-    <main class="login-page">
-      <div class="login-box">
-        <div class="login-title">フレンドカード管理</div>
-        <div class="login-sub">管理者ログイン</div>
-        ${error?`<div class="login-error">${esc(error)}</div>`:''}
-        <label>
-          管理パスワード
-          <input id="password" type="password"
-            autocomplete="current-password"
-            placeholder="GASで設定したパスワード">
-        </label>
-        <button class="primary login-btn" id="login">ログイン</button>
-        <a class="back-link" href="index.html">← 閲覧ページへ戻る</a>
-      </div>
-    </main>`;
-
-  $('#login').onclick=login;
-  $('#password').onkeydown=e=>{
-    if(e.key==='Enter')login();
-  };
+ document.body.innerHTML=`<main class="auth-screen"><div class="login-panel"><h1>フレカ管理ログイン</h1><p class="note">管理パスワードを入力してください。</p>
+ ${error?`<p class="note" style="color:#b34664">${esc(error)}</p>`:''}
+ <form id="login-form"><label class="field">パスワード
+ <span class="password-control"><input id="password" type="password" required autocomplete="current-password">
+ <button id="password-peek" type="button" class="password-peek" aria-pressed="false" aria-label="押している間パスワードを表示" title="押している間パスワードを表示"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+ </span></label><button type="submit" class="btn primary" id="login">ログイン</button></form>
+ <p class="note" style="margin-top:22px"><a href="index.html">フレカ閲覧ページに戻る</a></p></div></main>`;
+ $('#login-form').onsubmit=e=>{e.preventDefault();login();};
+ const input=$('#password'),peek=$('#password-peek');
+ const reveal=show=>{input.type=show?'text':'password';peek.setAttribute('aria-pressed',String(show));};
+ peek.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();reveal(true);});
+ for(const ev of ['pointerup','pointercancel','pointerleave','blur'])peek.addEventListener(ev,()=>reveal(false));
+ peek.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();reveal(true);}});
+ peek.addEventListener('keyup',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();reveal(false);}});
 }
-
 async function login(){
   const p=$('#password').value;
   if(!p)return renderLogin('パスワードを入力してください。');
