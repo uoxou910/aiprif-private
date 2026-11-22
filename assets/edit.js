@@ -438,8 +438,8 @@ function openUploader(){
   host.innerHTML=entries.map((item,i)=>`<div class="upload-entry" data-entry="${item.key}">
    <button type="button" class="upload-thumb site-b-upload-zoom-trigger" data-zoom="${item.key}" aria-label="${i+1}件目の画像を拡大"><img src="${esc(item.preview)}" alt="画像プレビュー" loading="lazy"></button>
    <div class="upload-fields">
+    <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名" maxlength="120" value="${esc(item.chara)}">
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
-    <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名（自由入力）" maxlength="120" value="${esc(item.chara)}">
    </div>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
@@ -539,7 +539,7 @@ function openUploader(){
   for(let i=0;i<work.length;i++){
    const item=work[i];
    let uploadedId='';
-   siteBShowSaving(`フレカを登録中… ${i+1}/${work.length}件（完了 ${complete}件）。このページを閉じないでください`);
+   siteBShowSaving(`フレカを登録中… ${i+1}/${work.length}件。このページを閉じないでください`);
    try{
     const data=await readDataURL(item.file);
     const saved=await post('upload',{filename:item.file.name,mimeType:item.file.type||'image/png',data});
@@ -572,7 +572,7 @@ function openEditor(id){
  const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
  $('#editor-host').innerHTML=`<div class="dialog-shade" id="edit-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを編集">
  <div class="row between"><h2>フレカを編集</h2><button type="button" class="tiny-btn" id="edit-close">×</button></div>
- <label class="field">キャラ名<input type="text" class="chara" data-id="${esc(id)}" value="${esc(x.chara||'')}" placeholder="自由入力" maxlength="120"></label>
+ <label class="field">キャラ名<input type="text" class="chara" data-id="${esc(id)}" value="${esc(x.chara||'')}" placeholder="キャラ名" maxlength="120"></label>
  <label class="field">コーデ名<input type="text" class="code" data-id="${esc(id)}" value="${esc(x.code||'')}" placeholder="コーデ名" maxlength="120"></label>
  <div class="dialog-actions"><button type="button" class="btn" id="edit-cancel">キャンセル</button><button type="button" class="btn primary" id="edit-save">保存</button></div>
  </section></div>`;
