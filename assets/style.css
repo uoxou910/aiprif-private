@@ -1240,3 +1240,31 @@ body[data-page="edit"] .admin-card-grid .admin-sub {
  body[data-page="edit"] .admin-card-grid .admin-title {font-size:12px;}
  body[data-page="edit"] .admin-card-grid .admin-sub {font-size:11px;}
 }
+
+/* Public gallery: auto-load indicator for the next group of cards. */
+body[data-page="view"] .infinite-loader {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ gap:9px;
+ min-height:48px;
+ padding:16px 0 26px;
+ color:#817a88;
+ font-size:12px;
+}
+body[data-page="view"] .infinite-loader[hidden] {display:none;}
+body[data-page="view"] .infinite-loader-dot {
+ width:9px;
+ height:9px;
+ flex:0 0 auto;
+ border-radius:50%;
+ background:var(--theme-color,#9f9aa8);
+ animation:freca-loader-pulse 1100ms ease-in-out infinite;
+}
+@keyframes freca-loader-pulse {
+ 0%,100% {opacity:.35; transform:scale(.8);}
+ 50% {opacity:1; transform:scale(1);}
+}
+@media (prefers-reduced-motion:reduce) {
+ body[data-page="view"] .infinite-loader-dot {animation:none;}
+}
