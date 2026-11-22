@@ -2,6 +2,7 @@
 const C=window.SITE_D_CONFIG||{};
 let cards=[],q='',deleteMode=false,selected=new Set(),
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
+let siteBUploadInProgress=false;
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({
@@ -203,7 +204,8 @@ function draw(){
 function openUploader(){
  const imageMime={
   png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',
-  gif:'image/gif',bmp:'image/bmp',avif:'image/avif',
+  gif:'image/gif',bmp:'image/bmp',avif:'image/avif',apng:'image/png',
+  jpe:'image/jpeg',jfif:'image/jpeg',svg:'image/svg+xml',
   heic:'image/heic',heif:'image/heif',tif:'image/tiff',tiff:'image/tiff'
  };
  const MAX_IMAGE=8*1024*1024,MAX_ZIP=150*1024*1024,MAX_UNPACKED=180*1024*1024;
@@ -331,6 +333,7 @@ function openUploader(){
   const work=entries.map(x=>({...x,chara:x.chara.trim(),code:x.code.trim()}));
   if(work.some(x=>!x.chara||!x.code)){alert('すべての画像にキャラ名とコーデ名を入力してください。');return;}
   submitting=true;picker.disabled=true;submit.disabled=true;zone.classList.add('upload-busy');
+  siteBUploadInProgress=true;
   let complete=0;const errors=[];
   for(let i=0;i<work.length;i++){
    const item=work[i];let uploadedId='';
@@ -348,7 +351,7 @@ function openUploader(){
     errors.push(`${item.path}：${err.message}`);
    }
   }
-  submitting=false;release();
+  submitting=false;siteBUploadInProgress=false;release();
   try{cards=(await post('adminList')).cards||cards;render();}catch(e){closeEditor();alert('登録後の一覧更新に失敗しました。ページを再読み込みしてください：'+e.message);}
   toast(`${complete}/${work.length}件を登録しました`);
   if(errors.length)alert(`登録できなかった画像があります。\n${errors.slice(0,5).join('\n')}${errors.length>5?`\nほか${errors.length-5}件`:''}`);
@@ -366,7 +369,7 @@ function openEditor(id){
  $('#edit-shade').onclick=e=>{if(e.target.id==='edit-shade')closeEditor();};
  $('#edit-save').onclick=()=>saveCard(id);
 }
-function closeEditor(){const host=$('#editor-host');if(host)host.innerHTML='';}
+function closeEditor(){if(siteBUploadInProgress)return;const host=$('#editor-host');if(host)host.innerHTML='';}
 function openPreview(id){
  const x=cards.find(v=>String(v.id)===String(id));if(!x?.image_url)return;
  $('#adminModalImg').src=x.image_url;$('#adminModal').classList.remove('hidden');
