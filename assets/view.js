@@ -1,4 +1,11 @@
 (async()=>{'use strict';const S=window.SiteD,{ $, $$, esc,norm,api,cardImage}=S;
+function siteBListThumb(url){
+ const src=String(url||'');
+ if(!/^https:\/\/drive\.google\.com\/thumbnail\?/i.test(src))return src;
+ if(/[?&]sz=/i.test(src))return src.replace(/([?&]sz=)[^&]*/i,'$1w480');
+ return src+'&sz=w480';
+}
+
 let cards=[],query='',page=1,lastCardsUpdated='';const PAGE=20;
 function dateUpdate(){
  const timestamps=[Date.parse(lastCardsUpdated||''),...cards.map(x=>Date.parse(x.updated_at||x.created_at||''))].filter(Number.isFinite);
@@ -24,7 +31,7 @@ $('#drawer-close').onclick=()=>toggleMenu(false);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleMenu(false);});
 function pages(current,total){if(total<=7)return Array.from({length:total},(_,i)=>i+1);const out=[1];let a=Math.max(2,current-1),b=Math.min(total-1,current+1);if(current<=3){a=2;b=4;}else if(current>=total-2){a=total-3;b=total-1;}if(a>2)out.push('…');for(let i=a;i<=b;i++)out.push(i);if(b<total-1)out.push('…');out.push(total);return out;}
 function render(){const filtered=cards.filter(x=>!query||norm(x.code+' '+x.chara).includes(norm(query)));const total=Math.max(1,Math.ceil(filtered.length/PAGE));page=Math.min(page,total);const rows=filtered.slice((page-1)*PAGE,page*PAGE);
-$('#grid').innerHTML=rows.length?rows.map((x,i)=>`<article class="freca-card" data-id="${esc(x.id)}" style="--stagger:${Math.min(rows.indexOf(x),9)*32}ms"><div class="card-picture" data-id="${esc(x.id)}">${i<2&&x.image_url?`<img src="${esc(x.image_url)}" alt="${esc(x.code)}" loading="eager" fetchpriority="high" decoding="async">`:cardImage(x.image_url,x.code)}</div><div class="card-detail"><div class="card-chara">${esc(x.chara)}</div><div class="card-code">${esc(x.code)}</div></div></article>`).join(''):'<div class="placeholder-panel">カードがありません</div>';
+$('#grid').innerHTML=rows.length?rows.map((x,i)=>`<article class="freca-card" data-id="${esc(x.id)}" style="--stagger:${Math.min(rows.indexOf(x),9)*32}ms"><div class="card-picture" data-id="${esc(x.id)}">${i<2&&x.image_url?`<img src="${esc(siteBListThumb(x.image_url))}" alt="${esc(x.code)}" loading="eager" fetchpriority="high" decoding="async">`:cardImage(siteBListThumb(x.image_url),x.code)}</div><div class="card-detail"><div class="card-chara">${esc(x.chara)}</div><div class="card-code">${esc(x.code)}</div></div></article>`).join(''):'<div class="placeholder-panel">カードがありません</div>';
 $('#pager').innerHTML=total<=1?'':`<button data-page="${page-1}" ${page===1?'disabled':''}>‹</button>${pages(page,total).map(p=>p==='…'?'<span class="pager-ellipsis">…</span>':`<button data-page="${p}" class="${p===page?'active':''}">${p}</button>`).join('')}<button data-page="${page+1}" ${page===total?'disabled':''}>›</button>`;
 $$('#pager [data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;page=+b.dataset.page;render();scrollTo({top:0,behavior:'smooth'});}));
 $$('.card-picture').forEach(el=>el.addEventListener('click',()=>{const x=cards.find(x=>String(x.id)===el.dataset.id);if(!x?.image_url)return;$('#full-image').src=x.image_url;$('#overlay').classList.remove('hidden');}));}
