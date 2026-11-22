@@ -625,8 +625,20 @@ async function saveCard(id){
  try{
   await saving;
   const card=cards.find(x=>String(x.id)===String(id));
-  if(card){card.chara=chara;card.code=code;}
-  if($('#list'))draw();
+  if(card){
+   card.chara=chara;
+   card.code=code;
+   if($('#list')){
+    // Avoid rebuilding every image when only a label changed.
+    const button=[...document.querySelectorAll('#list [data-edit]')].find(b=>b.dataset.edit===String(id));
+    const row=button?.closest('.admin-card');
+    if(!q&&row){
+     const title=row.querySelector('.admin-title'),subtitle=row.querySelector('.admin-sub');
+     if(title)title.textContent=card.code||'コーデ名未設定';
+     if(subtitle)subtitle.textContent=(card.chara||'キャラ名未設定')+(card.visible===false?' ・ 非公開':'');
+    }else draw();
+   }
+  }
   toast('保存しました');
  }catch(e){
   // The saved data is not changed locally on failure.
