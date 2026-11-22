@@ -9,6 +9,13 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 }[c]));
 
+function siteBListThumb(url){
+ const src=String(url||'');
+ if(!/^https:\/\/drive\.google\.com\/thumbnail\?/i.test(src))return src;
+ if(/[?&]sz=/i.test(src))return src.replace(/([?&]sz=)[^&]*/i,'$1w480');
+ return src+'&sz=w480';
+}
+
 const configured=()=>C.gasUrl &&
   /^https:\/\/script\.google\.com\/macros\/s\//.test(C.gasUrl) &&
   !C.gasUrl.includes('YOUR_');
@@ -179,7 +186,7 @@ function draw(){
   return `<article class="admin-card ${visible?'':'site-b-unlisted'}">
    <div class="site-b-picture">
     <button type="button" class="admin-image" data-preview="${id}" aria-label="画像を拡大">
-      ${x.image_url?`<img src="${esc(x.image_url)}" alt="${esc(x.code)}" loading="${i<2?'eager':'lazy'}" decoding="async">`:'<span>画像なし</span>'}
+      ${x.image_url?`<img src="${esc(siteBListThumb(x.image_url))}" alt="${esc(x.code)}" loading="${i<2?'eager':'lazy'}" decoding="async">`:'<span>画像なし</span>'}
     </button>
     ${deleteMode?`<button type="button" class="site-b-selectbox ${selected.has(x.id)?'selected':''}" data-select="${id}" aria-pressed="${selected.has(x.id)}">${selected.has(x.id)?'✓':'選択'}</button>`:''}
    </div>
