@@ -38,16 +38,39 @@ const isRemoteHost=()=>/^https?:$/.test(location.protocol)&&!['localhost','127.0
 function localRead(){if(cache)return cache;try{cache=sanitize(JSON.parse(localStorage.getItem(KEY)||'null'));}catch(e){cache=base();}return cache;}
 function localSave(d){const val=sanitize(d);localStorage.setItem(KEY,JSON.stringify(val));cache=val;return val;}
 function publicData(d){return {cards:d.cards,colors:d.colors,lastCardsUpdated:d.lastCardsUpdated||''};}
-async function api(action,payload={},token=''){
- if(action!=='public')throw Error('サイトBの管理操作は専用APIを利用します');
- const url=new URL(window.SITE_D_CONFIG.gasUrl);
- url.searchParams.set('action','list');
- url.searchParams.set('_ts',String(Date.now()));
- // No viewing password is supplied. Site B's GAS must authorize public listing.
- const res=await fetch(url.toString(),{cache:'no-store',redirect:'follow'});
+async function pinRequest_(action,params={}) {
+ const body=new URLSearchParams({action,...params});
+ const res=await fetch(window.SITE_D_CONFIG.gasUrl,{
+  method:'POST',body,redirect:'follow',cache:'no-store'
+ });
  if(!res.ok)throw Error('通信エラー: '+res.status);
  const result=await res.json();
- if(result.ok===false)throw Error(result.error||'公開データを取得できませんでした');
+ if(result.ok!==true)throw Error(result.error||'PIN認証に失敗しました');
+ return result;
+}
+async function api(action,payload={},token=''){
+ const pinEnabled=window.SITE_D_CONFIG?.pinAuthEnabled===true;
+ if(pinEnabled&&action==='pinLogin'){
+  const pin=String(payload.pin??'');
+  if(!/^[0-9]{4}$/.test(pin))throw Error('4桁のPINを入力してください');
+  return pinRequest_('pinLogin',{pin});
+ }
+ if(action!=='public')throw Error('サイトBの管理操作は専用APIを利用します');
+ if(pinEnabled&&(!token||typeof token!=='string'))throw Error('PIN_REQUIRED');
+ const url=new URL(window.SITE_D_CONFIG.gasUrl);
+ let result;
+ if(pinEnabled){
+  // Public cards are obtained only with a server-verified session token.
+  // No GET list fallback is allowed when PIN protection is active.
+  result=await pinRequest_('pinList',{token});
+ }else{
+  url.searchParams.set('action','list');
+  url.searchParams.set('_ts',String(Date.now()));
+  const res=await fetch(url.toString(),{cache:'no-store',redirect:'follow'});
+  if(!res.ok)throw Error('通信エラー: '+res.status);
+  result=await res.json();
+  if(result.ok===false)throw Error(result.error||'公開データを取得できませんでした');
+ }
  const rows=Array.isArray(result)?result:(Array.isArray(result.cards)?result.cards:[]);
  if(!Array.isArray(rows))throw Error('公開データの形式が正しくありません');
  const cards=rows.filter(x=>x&&x.visible!==false&&typeof x.code==='string')
