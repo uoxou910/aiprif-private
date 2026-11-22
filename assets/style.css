@@ -937,3 +937,26 @@ body[data-page="edit"] #site-b-save-progress {
   text-align:center;
   pointer-events:none;
 }
+
+/* Match the batch character-copy control to the compact card upload form. */
+body[data-page="edit"] .card-entry-dialog .card-chara-bulk {
+ display:flex;
+ align-items:center;
+ gap:9px;
+ margin:14px 0 4px;
+ color:#595263;
+ font-size:12px;
+ line-height:1.5;
+ cursor:pointer;
+}
+body[data-page="edit"] .card-entry-dialog .card-chara-bulk input[type="checkbox"] {
+ flex:0 0 auto;
+ width:16px;
+ height:16px;
+ margin:0;
+ accent-color:#746c83;
+ cursor:pointer;
+}
+@media (max-width:699px) {
+ body[data-page="edit"] .card-entry-dialog .card-chara-bulk {font-size:13px;}
+}
