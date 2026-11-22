@@ -138,6 +138,7 @@ async function login(){
 }
 
 function logout(){
+  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です。完了後にログアウトできます');return;}
   adminPassword='';
   sessionStorage.removeItem('freca_admin_password');
   renderLogin();
@@ -375,6 +376,7 @@ function setupSiteBInputHistory(extra=[]){
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
 }
 function openUploader(){
+ if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です。完了後に追加できます');return;}
  const imageMime={
   png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',
   gif:'image/gif',bmp:'image/bmp',avif:'image/avif',apng:'image/png',
@@ -516,33 +518,54 @@ function openUploader(){
  zone.ondragleave=()=>zone.classList.remove('dragging');
  zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');addFiles(e.dataTransfer.files);};
  submit.onclick=async()=>{
-  if(!entries.length||preparing||submitting)return;
-  const work=entries.map(x=>({...x,chara:x.chara.trim(),code:x.code.trim()}));
-  if(work.some(x=>!x.chara||!x.code)){alert('すべての画像にキャラ名とコーデ名を入力してください。');return;}
-  submitting=true;picker.disabled=true;submit.disabled=true;zone.classList.add('upload-busy');
-  siteBUploadInProgress=true;
-  let complete=0;const errors=[];
+ if(!entries.length||preparing||submitting||siteBUploadInProgress||siteBSaveInProgress)return;
+ const work=entries.map(x=>({file:x.file,path:x.path,chara:x.chara.trim(),code:x.code.trim()}));
+ if(work.some(x=>!x.chara||!x.code)){
+  alert('すべての画像にキャラ名とコーデ名を入力してください。');
+  return;
+ }
+ submitting=true;
+ closed=true;
+ picker.disabled=true;
+ submit.disabled=true;
+ // Return to the card list now. Only the upload is still running.
+ release();
+ closeEditor();
+ siteBUploadInProgress=true;
+ siteBShowSaving(`フレカを登録中… 0/${work.length}件。このページを閉じないでください`);
+ let complete=0;
+ const created=[],errors=[];
+ try{
   for(let i=0;i<work.length;i++){
-   const item=work[i];let uploadedId='';
-   notify(`アップロード中… ${i+1}/${work.length}件（完了${complete}件）`);
+   const item=work[i];
+   let uploadedId='';
+   siteBShowSaving(`フレカを登録中… ${i+1}/${work.length}件（完了 ${complete}件）。このページを閉じないでください`);
    try{
     const data=await readDataURL(item.file);
     const saved=await post('upload',{filename:item.file.name,mimeType:item.file.type||'image/png',data});
     uploadedId=saved.card?.id||'';
     if(!uploadedId)throw Error('アップロードしたカードIDが取得できませんでした');
     await post('update',{id:uploadedId,chara:item.chara,code:item.code});
+    created.push({...saved.card,id:uploadedId,chara:item.chara,code:item.code});
     complete++;
    }catch(err){
-    // Avoid leaving blank entries if the second (metadata) request failed.
-    if(uploadedId){try{await post('delete',{id:uploadedId});}catch(_){errors.push(`${item.path}：登録情報の保存に失敗し、未完成のカードが残っている可能性があります`);}}
+    if(uploadedId){
+     try{await post('delete',{id:uploadedId});}
+     catch(_){errors.push(`${item.path}：保存途中のカードが残っている可能性があります`);}
+    }
     errors.push(`${item.path}：${err.message}`);
    }
   }
-  submitting=false;siteBUploadInProgress=false;release();
-  try{cards=(await post('adminList')).cards||cards;render();}catch(e){closeEditor();alert('登録後の一覧更新に失敗しました。ページを再読み込みしてください：'+e.message);}
-  toast(`${complete}/${work.length}件を登録しました`);
-  if(errors.length)alert(`登録できなかった画像があります。\n${errors.slice(0,5).join('\n')}${errors.length>5?`\nほか${errors.length-5}件`:''}`);
- };
+ }finally{
+  siteBUploadInProgress=false;
+  // The GAS already returned the saved cards; avoid an extra adminList request.
+  if(created.length)cards.unshift(...created.reverse());
+  try{if($('#list'))render();}catch(e){console.error(e);}
+  siteBHideSaving();
+ }
+ toast(`${complete}/${work.length}件を登録しました`);
+ if(errors.length)alert(`登録できなかった画像があります。\n${errors.slice(0,5).join('\n')}${errors.length>5?`\nほか${errors.length-5}件`:''}`);
+}
 }
 function openEditor(id){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
