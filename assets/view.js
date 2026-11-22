@@ -24,6 +24,9 @@ const publicCard=card=>{
   mikuko:mikuko||card.mikuko===true||String(card.mikuko).toLowerCase()==='true'};
 };
 let cards=[],query='',darkOnly=false,mikukoOnly=false,lastCardsUpdated='';const wideGrid=window.matchMedia('(min-width: 1400px)');
+const pinEnabled=window.SITE_D_CONFIG?.pinAuthEnabled===true;
+const pinSessionKey='freca_site_b_public_pin_token';
+if(pinEnabled)document.body.classList.add('site-b-pin-locked');
 
 function dateUpdate(){
  const timestamps=[Date.parse(lastCardsUpdated||''),...cards.map(x=>Date.parse(x.updated_at||x.created_at||''))].filter(Number.isFinite);
@@ -103,18 +106,125 @@ $('#query').addEventListener('input',e=>{query=e.target.value;render();});
 $('#public-dark-only').addEventListener('change',e=>{darkOnly=e.target.checked;render();});
 $('#public-mikuko-only').addEventListener('change',e=>{mikukoOnly=e.target.checked;render();});
 $('#close').onclick=()=>$('#overlay').classList.add('hidden');$('#overlay').onclick=e=>{if(e.target.id==='overlay')$('#overlay').classList.add('hidden');};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#overlay').classList.add('hidden')});
-try{
- const d=await api('public');
+
+async function loadPublicCards(authToken=''){
+ const d=await api('public',{},authToken);
  cards=(Array.isArray(d.cards)?d.cards:[]).filter(x=>x&&x.visible!==false&&typeof x.code==='string').map(publicCard);
  lastCardsUpdated=d.lastCardsUpdated||'';
  $('#update').textContent=dateUpdate();
  render();
-}catch(e){
- console.error(e);
+}
+function showPublicFailure(error){
+ console.error(error);
  loadTrigger.hidden=true;
- const needsSetup=/パスワード|認証|未設定/.test(String(e.message));
+ const needsSetup=/パスワード|認証|未設定/.test(String(error.message));
  $('#grid').innerHTML='<div class="placeholder-panel">'+
   (needsSetup?'公開用GASの閲覧パスワード設定の変更が必要です。':'フレカの読み込みに失敗しました。')+
   ' <a href="legacy-index.html">旧閲覧画面を開く</a></div>';
+}
+async function startPinScreen(){
+ // An app-level gate only; the GAS must also disable its old unauthenticated GET list.
+ const screen=document.createElement('section');
+ screen.id='site-b-pin-screen';
+ screen.className='site-b-pin-screen';
+ screen.setAttribute('role','group');
+ screen.setAttribute('aria-label','サイトBのPIN認証');
+ const keys=[1,2,3,4,5,6,7,8,9,0];
+ screen.innerHTML=
+  '<div class="site-b-pin-panel">'+
+   '<div class="site-b-pin-lock-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="11" rx="2"/><path d="M8.5 10.5v-4a3.5 3.5 0 0 1 7 0v4"/></svg></div>'+
+   '<h1 class="site-b-pin-title">フレカ置き場2</h1>'+
+   '<p class="site-b-pin-caption">PINコードを入力</p>'+
+   '<div class="site-b-pin-dots" role="img" aria-label="4桁中0桁入力済み">'+
+    [0,1,2,3].map(()=>'<span class="site-b-pin-dot"></span>').join('')+
+   '</div>'+
+   '<p class="site-b-pin-message" role="status" aria-live="polite"></p>'+
+   '<div class="site-b-pin-keypad" aria-label="PIN入力キー">'+
+    keys.map(n=>'<button type="button" class="site-b-pin-key'+(n===0?' site-b-pin-zero':'')+'" data-pin-digit="'+n+'" aria-label="'+n+'">'+n+'</button>').join('')+
+    '<button type="button" class="site-b-pin-backspace" id="site-b-pin-backspace" aria-label="1文字削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H21v16H9L2 12z"/><path d="m12 9 6 6m0-6-6 6"/></svg></button>'+
+   '</div>'+
+   '<p class="site-b-pin-hint">PCでは数字キーでも入力できます</p>'+
+  '</div>';
+ document.body.appendChild(screen);
+ let entered='',waiting=false,unlocked=false;
+ const status=screen.querySelector('.site-b-pin-message');
+ const dots=[...screen.querySelectorAll('.site-b-pin-dot')];
+ const redraw=()=>{
+  dots.forEach((dot,i)=>dot.classList.toggle('filled',i<entered.length));
+  screen.querySelector('.site-b-pin-dots').setAttribute('aria-label','4桁中'+entered.length+'桁入力済み');
+ };
+ const message=(txt,bad=false)=>{
+  status.textContent=txt||'';
+  status.classList.toggle('is-error',bad);
+ };
+ const unlock=()=>{
+  unlocked=true;
+  screen.remove();
+  document.body.classList.remove('site-b-pin-locked');
+ };
+ async function submitPin(){
+  if(waiting||unlocked||entered.length!==4)return;
+  waiting=true;
+  message('認証しています…');
+  try{
+   const result=await api('pinLogin',{pin:entered});
+   if(!result.token)throw Error('認証情報を取得できませんでした');
+   // Do not unlock if the returned token cannot fetch the protected list.
+   await loadPublicCards(result.token);
+   sessionStorage.setItem(pinSessionKey,result.token);
+   unlock();
+  }catch(error){
+   entered='';
+   redraw();
+   message(String(error.message||'認証に失敗しました'),true);
+  }finally{waiting=false;}
+ }
+ function digit(n){
+  if(waiting||unlocked||entered.length>=4)return;
+  entered+=n;
+  message('');
+  redraw();
+  if(entered.length===4)void submitPin();
+ }
+ function erase(){
+  if(waiting||unlocked)return;
+  entered=entered.slice(0,-1);
+  message('');
+  redraw();
+ }
+ screen.querySelectorAll('[data-pin-digit]').forEach(b=>b.addEventListener('click',()=>digit(b.dataset.pinDigit)));
+ screen.querySelector('#site-b-pin-backspace').addEventListener('click',erase);
+ document.addEventListener('keydown',event=>{
+  if(unlocked||waiting)return;
+  if(/^[0-9]$/.test(event.key)){
+   event.preventDefault();digit(event.key);
+  }else if(event.key==='Backspace'||event.key==='Delete'){
+   event.preventDefault();erase();
+  }
+ });
+ const saved=sessionStorage.getItem(pinSessionKey);
+ if(saved){
+  waiting=true;
+  message('認証状態を確認しています…');
+  try{
+   await loadPublicCards(saved);
+   unlock();
+  }catch(error){
+   sessionStorage.removeItem(pinSessionKey);
+   message('PINコードを入力してください');
+  }finally{waiting=false;}
+ }
+}
+if(pinEnabled){
+ try{await startPinScreen();}
+ catch(error){
+  console.error(error);
+  // Keep the site locked even when initialization fails.
+  $('#app').innerHTML='';
+  document.body.classList.add('site-b-pin-locked');
+ }
+}else{
+ try{await loadPublicCards();}
+ catch(error){showPublicFailure(error);}
 }
 })();
