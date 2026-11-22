@@ -173,99 +173,34 @@ function filteredCards(){
 }
 
 function draw(){
-  const list=filteredCards();
-
-  $('#list').innerHTML=list.length
-    ?list.map((x,i)=>{
-      const visible=x.visible!==false;
-
-      return `
-        <div class="selectable admin-card-wrap ${visible?'':'is-hidden'}"
-             style="--delay:${Math.min(i,18)*45}ms">
-
-          <div class="selectbox ${deleteMode?'on':''} ${selected.has(x.id)?'checked':''}"
-               data-id="${x.id}">
-            ${selected.has(x.id)?'✓':''}
-          </div>
-
-          <div class="edit-card">
-            <button class="admin-image-button"
-                    type="button"
-                    data-preview="${x.id}"
-                    aria-label="画像を拡大">
-              <img
-                src="${esc(x.image_url)}"
-                alt=""
-                loading="${i<8?'eager':'lazy'}"
-                fetchpriority="${i<4?'high':'auto'}"
-                decoding="async">
-              ${visible?'':'<span class="hidden-badge">非表示</span>'}
-            </button>
-
-            <div class="fields">
-              <input class="chara"
-                     data-id="${x.id}"
-                     value="${esc(x.chara||'')}"
-                     placeholder="キャラクター">
-
-              <input class="code"
-                     data-id="${x.id}"
-                     value="${esc(x.code||'')}"
-                     placeholder="コーデ名">
-
-              <div class="visibility-row">
-                <span class="visibility-state ${visible?'public':'private'}">
-                  ${visible?'公開中':'非表示'}
-                </span>
-                <button class="btn visibility-toggle"
-                        data-id="${x.id}"
-                        data-visible="${visible}">
-                  ${visible?'非表示にする':'表示する'}
-                </button>
-              </div>
-
-              <div class="row">
-                <button class="btn save" data-id="${x.id}">保存</button>
-                <button class="btn danger one-delete" data-id="${x.id}">削除</button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-    }).join('')
-    :'<div class="empty">カードがありません</div>';
-
-  document.querySelectorAll('.selectbox').forEach(b=>{
-    b.onclick=()=>{
-      const id=b.dataset.id;
-      selected.has(id)?selected.delete(id):selected.add(id);
-      updateBar();
-      draw();
-    };
-  });
-
-  document.querySelectorAll('.save').forEach(b=>{
-    b.onclick=()=>saveCard(b.dataset.id);
-  });
-
-  document.querySelectorAll('.one-delete').forEach(b=>{
-    b.onclick=()=>deleteOne(b.dataset.id);
-  });
-
-  document.querySelectorAll('.visibility-toggle').forEach(b=>{
-    b.onclick=()=>toggleVisibility(
-      b.dataset.id,
-      b.dataset.visible==='true'
-    );
-  });
-
-  document.querySelectorAll('[data-preview]').forEach(b=>{
-    b.onclick=()=>{
-      if(deleteMode)return;
-      openPreview(b.dataset.preview);
-    };
-  });
+ const list=filteredCards();
+ $('#list').innerHTML=list.length?list.map((x,i)=>{
+  const visible=x.visible!==false,id=esc(x.id);
+  return `<article class="admin-card ${visible?'':'site-b-unlisted'}">
+   <div class="site-b-picture">
+    <button type="button" class="admin-image" data-preview="${id}" aria-label="画像を拡大">
+      ${x.image_url?`<img src="${esc(x.image_url)}" alt="${esc(x.code)}" loading="${i<2?'eager':'lazy'}" decoding="async">`:'<span>画像なし</span>'}
+    </button>
+    ${deleteMode?`<button type="button" class="site-b-selectbox ${selected.has(x.id)?'selected':''}" data-select="${id}" aria-pressed="${selected.has(x.id)}">${selected.has(x.id)?'✓':'選択'}</button>`:''}
+   </div>
+   <div class="admin-card-body">
+    <div class="admin-title">${esc(x.code||'コーデ名未設定')}</div>
+    <div class="admin-sub">${esc(x.chara||'キャラ名未設定')}${visible?'':' ・ 非公開'}</div>
+    <div class="row">
+     <button type="button" class="tiny-btn" data-edit="${id}">編集</button>
+     <button type="button" class="tiny-btn" data-visibility="${id}" data-current-visible="${visible}">${visible?'非公開にする':'公開する'}</button>
+     <button type="button" class="tiny-btn danger" data-delete="${id}">削除</button>
+    </div>
+   </div></article>`;
+ }).join(''):'<div class="placeholder-panel">フレカがありません</div>';
+ document.querySelectorAll('[data-preview]').forEach(b=>b.onclick=()=>{if(!deleteMode)openPreview(b.dataset.preview);});
+ document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
+ document.querySelectorAll('[data-visibility]').forEach(b=>b.onclick=()=>toggleVisibility(b.dataset.visibility,b.dataset.currentVisible==='true'));
+ document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteOne(b.dataset.delete));
+ document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{
+  const id=b.dataset.select;selected.has(id)?selected.delete(id):selected.add(id);updateBar();draw();
+ });
 }
-
 function openPreview(id){
   const x=cards.find(x=>String(x.id)===String(id));
   if(!x)return;
