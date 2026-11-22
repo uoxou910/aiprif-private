@@ -1,331 +1,45 @@
-const C=window.FRECA_CONFIG||{};
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let cards=[],q='',chara='',page=1;
-const PAGE=20;
-
-function thumbUrl(url){
-  const s=String(url||'');
-  const id=s.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w480' : s;
+(async()=>{'use strict';const S=window.SiteD,{ $, $$, esc,norm,api,cardImage}=S;
+let cards=[],query='',page=1,lastCardsUpdated='';const PAGE=20;
+function dateUpdate(){
+ const timestamps=[Date.parse(lastCardsUpdated||''),...cards.map(x=>Date.parse(x.updated_at||x.created_at||''))].filter(Number.isFinite);
+ if(!timestamps.length)return '更新:未記録';
+ const d=new Date(Math.max(...timestamps));
+ return `更新:${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
-
-function normalizeSearchText(s){
-  return String(s??'')
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[\u30a1-\u30f6]/g,ch =>
-      String.fromCharCode(ch.charCodeAt(0)-0x60)
-    );
+$('#app').innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner"><div class="app-title">${esc(window.SITE_D_CONFIG.appName)}</div><div class="view-header-actions"><span class="header-date" id="update"></span><button class="hamburger" id="menu-toggle" type="button" aria-label="メニューを開く" aria-expanded="false"><svg class="hamburger-lines" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header><div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="メニュー"><a href="edit.html">管理画面へ切替</a></nav><button class="drawer-close" id="drawer-close" type="button" aria-label="メニューを閉じる" aria-hidden="true">×</button><div class="container search-dock"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="query" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false"></label></div><main class="container"><div class="card-grid animated-grid" id="grid"></div><div class="pager" id="pager"></div></main><div class="overlay hidden" id="overlay"><img id="full-image" alt="フレカ拡大"><button class="overlay-close" id="close" aria-label="閉じる">×</button></div>`;
+const menuBtn=$('#menu-toggle'),menuPanel=$('#hamburger-panel'),menuScrim=$('#menu-scrim');
+const drawerClose=$('#drawer-close');
+function positionClose(){const r=menuBtn.getBoundingClientRect();Object.assign(drawerClose.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});}
+function toggleMenu(open){
+ if(open)positionClose();
+ menuBtn.setAttribute('aria-expanded',String(open));
+ menuPanel.classList.toggle('is-open',open);menuScrim.classList.toggle('is-open',open);
+ drawerClose.classList.toggle('is-open',open);drawerClose.setAttribute('aria-hidden',String(!open));
+ if(open)drawerClose.focus({preventScroll:true});else menuBtn.focus({preventScroll:true});
 }
-
-let viewPassword=sessionStorage.getItem('freca_view_password')||'';
-
-// 認証済みの閲覧ページでのみ画像キャッシュを有効にする。
-async function enableImageCache(){
-  if(!('serviceWorker' in navigator) || !viewPassword)return;
-  try{
-    await navigator.serviceWorker.register('./image-cache-sw.js',{scope:'./'});
-  }catch(e){console.warn('画像キャッシュを有効化できませんでした:',e);}
+window.addEventListener('resize',()=>{if(menuPanel.classList.contains('is-open'))positionClose();});
+menuBtn.onclick=()=>toggleMenu(!menuPanel.classList.contains('is-open'));
+menuScrim.onclick=()=>toggleMenu(false);
+$('#drawer-close').onclick=()=>toggleMenu(false);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleMenu(false);});
+function pages(current,total){if(total<=7)return Array.from({length:total},(_,i)=>i+1);const out=[1];let a=Math.max(2,current-1),b=Math.min(total-1,current+1);if(current<=3){a=2;b=4;}else if(current>=total-2){a=total-3;b=total-1;}if(a>2)out.push('…');for(let i=a;i<=b;i++)out.push(i);if(b<total-1)out.push('…');out.push(total);return out;}
+function render(){const filtered=cards.filter(x=>!query||norm(x.code+' '+x.chara).includes(norm(query)));const total=Math.max(1,Math.ceil(filtered.length/PAGE));page=Math.min(page,total);const rows=filtered.slice((page-1)*PAGE,page*PAGE);
+$('#grid').innerHTML=rows.length?rows.map((x,i)=>`<article class="freca-card" data-id="${esc(x.id)}" style="--stagger:${Math.min(rows.indexOf(x),9)*32}ms"><div class="card-picture" data-id="${esc(x.id)}">${i<2&&x.image_url?`<img src="${esc(x.image_url)}" alt="${esc(x.code)}" loading="eager" fetchpriority="high" decoding="async">`:cardImage(x.image_url,x.code)}</div><div class="card-detail"><div class="card-chara">${esc(x.chara)}</div><div class="card-code">${esc(x.code)}</div></div></article>`).join(''):'<div class="placeholder-panel">カードがありません</div>';
+$('#pager').innerHTML=total<=1?'':`<button data-page="${page-1}" ${page===1?'disabled':''}>‹</button>${pages(page,total).map(p=>p==='…'?'<span class="pager-ellipsis">…</span>':`<button data-page="${p}" class="${p===page?'active':''}">${p}</button>`).join('')}<button data-page="${page+1}" ${page===total?'disabled':''}>›</button>`;
+$$('#pager [data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;page=+b.dataset.page;render();scrollTo({top:0,behavior:'smooth'});}));
+$$('.card-picture').forEach(el=>el.addEventListener('click',()=>{const x=cards.find(x=>String(x.id)===el.dataset.id);if(!x?.image_url)return;$('#full-image').src=x.image_url;$('#overlay').classList.remove('hidden');}));}
+$('#query').addEventListener('input',e=>{query=e.target.value;page=1;render();});$('#close').onclick=()=>$('#overlay').classList.add('hidden');$('#overlay').onclick=e=>{if(e.target.id==='overlay')$('#overlay').classList.add('hidden');};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#overlay').classList.add('hidden')});
+try{
+ const d=await api('public');
+ cards=(Array.isArray(d.cards)?d.cards:[]).filter(x=>x&&x.visible!==false&&typeof x.code==='string');
+ lastCardsUpdated=d.lastCardsUpdated||'';
+ $('#update').textContent=dateUpdate();
+ render();
+}catch(e){
+ console.error(e);
+ const needsSetup=/パスワード|認証|未設定/.test(String(e.message));
+ $('#grid').innerHTML='<div class="placeholder-panel">'+
+  (needsSetup?'公開用GASの閲覧パスワード設定の変更が必要です。':'フレカの読み込みに失敗しました。')+
+  ' <a href="legacy-index.html">旧閲覧画面を開く</a></div>';
 }
-async function clearImageCache(){
-  if(!('caches' in window))return;
-  try{await caches.delete('freca-siteb-thumbnails-v1');}catch(e){}
-}
-
-const CARD_CACHE_KEY='freca_siteB_cards_v1';
-
-function readCachedCards(){
-  if(!viewPassword)return null;
-  try{
-    const saved=JSON.parse(sessionStorage.getItem(CARD_CACHE_KEY)||'null');
-    if(saved && saved.gasUrl===C.gasUrl && saved.password===viewPassword && Array.isArray(saved.cards)){
-      return saved.cards;
-    }
-  }catch(e){}
-  return null;
-}
-
-function saveCachedCards(list){
-  try{
-    sessionStorage.setItem(CARD_CACHE_KEY,JSON.stringify({
-      gasUrl:C.gasUrl,password:viewPassword,cards:list
-    }));
-  }catch(e){} // 保存容量不足でも通常表示は継続
-}
-
-function clearCachedCards(){
-  sessionStorage.removeItem(CARD_CACHE_KEY);
-}
-
-
-async function apiGet(action,params={}){
-  const u=new URL(C.gasUrl);
-  u.searchParams.set('action',action);
-  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
-  u.searchParams.set('_ts',String(Date.now()));
-  const r=await fetch(u.toString(),{redirect:'follow',cache:'no-store'});
-  const j=await r.json();
-  if(!j.ok)throw new Error(j.error||'API error');
-  return j;
-}
-
-function renderViewLogin(error=''){
-  document.body.innerHTML=`
-    <main class="viewer-login-page">
-      <div class="viewer-login-box">
-        <div class="viewer-login-title">${esc(C.appName||'フレカ置き場')}</div>
-        <div class="viewer-login-sub">閲覧パスワードを入力してください</div>
-        ${error?`<div class="viewer-login-error">${esc(error)}</div>`:''}
-        <label class="viewer-login-label">
-          閲覧パスワード
-          <input id="viewPasswordInput"
-                 type="password"
-                 autocomplete="current-password"
-                 placeholder="パスワード">
-        </label>
-        <button class="viewer-login-button" id="viewLoginButton">見る</button>
-      </div>
-    </main>`;
-
-  const login=async()=>{
-    const p=$('#viewPasswordInput').value;
-    if(!p){
-      renderViewLogin('パスワードを入力してください。');
-      return;
-    }
-
-    // viewAuth は使わず、list 取得そのものでパスワード確認する。
-    viewPassword=p;
-    sessionStorage.setItem('freca_view_password',p);
-    clearCachedCards();
-    await loadCards(false);
-  };
-
-  $('#viewLoginButton').onclick=login;
-  $('#viewPasswordInput').onkeydown=e=>{
-    if(e.key==='Enter')login();
-  };
-}
-
-async function loadCards(useCache=true){
-  const cached=useCache?readCachedCards():null;
-  if(cached){
-    cards=cached;
-    buildShell();
-    renderResults();
-    enableImageCache();
-  }else{
-    document.body.innerHTML='<div class="loading">読み込み中...</div>';
-  }
-
-  try{
-    // 保存済み一覧を表示した後も、最新の公開カードをGASから取得する。
-    const j=await apiGet('list',{viewPassword});
-    const fresh=Array.isArray(j.cards)?j.cards:[];
-    const changed=JSON.stringify(fresh)!==JSON.stringify(cards);
-    cards=fresh;
-    saveCachedCards(cards);
-    enableImageCache();
-    if(!cached){
-      buildShell();
-      renderResults();
-    }else if(changed){
-      // 入力中の検索語・ページ番号を維持して更新する。
-      const search=$('#q');
-      if(search)q=search.value.trim();
-      buildShell();
-      if($('#q'))$('#q').value=q;
-      renderResults();
-    }
-  }catch(e){
-    const msg=String(e.message||'');
-    if(msg.includes('閲覧パスワードが違います') || msg.includes('未設定')){
-      // 認証が失効した場合は保存済みカードを残さない。
-      clearCachedCards();
-      clearImageCache();
-      sessionStorage.removeItem('freca_view_password');
-      viewPassword='';
-      cards=[];
-      renderViewLogin(msg.includes('未設定')
-        ? '閲覧パスワードがまだ設定されていません。'
-        : 'パスワードが違います。');
-    }else if(cached){
-      // 一時的な通信失敗では、認証済みセッションの保存済み一覧を維持する。
-      console.warn('最新のカード一覧を取得できませんでした:',e);
-    }else{
-      sessionStorage.removeItem('freca_view_password');
-      viewPassword='';
-      renderViewLogin('カード一覧の読み込みに失敗しました：'+msg);
-    }
-  }
-}
-
-async function load(){
-  if(!C.gasUrl || !/^https:\/\/script\.google\.com\/macros\/s\//.test(C.gasUrl) || C.gasUrl.includes('YOUR_')){
-    document.body.innerHTML='<div class="empty">assets/config.js にサイトB用GAS URLを設定してください</div>';
-    return;
-  }
-
-  if(viewPassword){
-    await loadCards();
-    return;
-  }
-
-  renderViewLogin();
-}
-
-function filteredCards(){
-  const nq=normalizeSearchText(q);
-
-  // 検索中はキャラタブの選択に関係なく、
-  // 全カードから「キャラ名 + コーデ名」を検索する。
-  if(q){
-    return cards.filter(x=>
-      normalizeSearchText(`${x.chara} ${x.code}`).includes(nq)
-    );
-  }
-
-  // 検索していない時だけキャラタブで絞り込む。
-  return cards.filter(x=>
-    !chara || x.chara===chara
-  );
-}
-
-
-function getLatestUpdateDate(){
-  const dates=cards
-    .map(x=>new Date(x.created_at))
-    .filter(d=>!Number.isNaN(d.getTime()));
-  if(!dates.length)return '';
-  const latest=new Date(Math.max(...dates.map(d=>d.getTime())));
-  const y=latest.getFullYear();
-  const m=String(latest.getMonth()+1).padStart(2,'0');
-  const day=String(latest.getDate()).padStart(2,'0');
-  return `${y}${m}${day}`;
-}
-
-function buildShell(){
-  const chars=[...new Set(cards.map(x=>x.chara).filter(Boolean))];
-
-  document.body.innerHTML=`
-    <header class="header">
-      <div class="header-inner">
-        <div class="title">${esc(C.appName||'フレカ置き場')}</div>
-        <div class="updated" id="updated"></div>
-      </div>
-    </header>
-
-    <div class="hero">
-      <div class="search">⌕<input id="q" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="キャラ名・コーデ名で検索"></div>
-    </div>
-
-    <main class="grid" id="grid"></main>
-    <div class="pager" id="pager"></div>
-
-    <div class="modal" id="modal">
-      <div class="modal-content">
-        <img id="modal-img">
-        <button class="close" id="close" aria-label="閉じる">×</button>
-      </div>
-    </div>`;
-
-  const latest=getLatestUpdateDate();
-  if(latest)$('#updated').textContent=`更新:${latest}`;
-
-  const input=$('#q');
-  let timer;
-
-  input.addEventListener('input',e=>{
-    clearTimeout(timer);
-    timer=setTimeout(()=>{
-      q=e.target.value.trim();
-      page=1;
-      renderResults();
-    },180);
-  });
-
-
-  $('#close').onclick=()=>$('#modal').classList.remove('open');
-  $('#modal').onclick=e=>{
-    if(e.target.id==='modal')$('#modal').classList.remove('open');
-  };
-}
-
-
-function makePageItems(current,total){
-  if(total<=7)return Array.from({length:total},(_,i)=>i+1);
-
-  const items=[1];
-  let start=Math.max(2,current-1);
-  let end=Math.min(total-1,current+1);
-
-  if(current<=3){
-    start=2;
-    end=4;
-  }else if(current>=total-2){
-    start=total-3;
-    end=total-1;
-  }
-
-  if(start>2)items.push('…');
-  for(let i=start;i<=end;i++)items.push(i);
-  if(end<total-1)items.push('…');
-  items.push(total);
-  return items;
-}
-
-function renderResults(){
-  const filtered=filteredCards();
-  const total=Math.max(1,Math.ceil(filtered.length/PAGE));
-  page=Math.min(page,total);
-  const list=filtered.slice((page-1)*PAGE,page*PAGE);
-
-  const grid=$('#grid');
-  const pager=$('#pager');
-
-  grid.innerHTML=list.length
-    ? list.map((x,i)=>`
-      <article class="card" data-id="${x.id}" style="--delay:${Math.min(i,18)*55}ms">
-        <div class="card-img"><img
-          src="${esc(thumbUrl(x.image_url))}"
-          loading="${i<2?'eager':'lazy'}"
-          fetchpriority="${i<2?'high':'low'}"
-          decoding="async"
-        ></div>
-        <div class="card-info">
-          <div class="chara">${esc(x.chara||'未設定')}</div>
-          <div class="code">${esc(x.code||'')}</div>
-        </div>
-      </article>`).join('')
-    : '<div class="empty" style="grid-column:1/-1">カードがありません</div>';
-
-  const pageItems=makePageItems(page,total);
-  pager.innerHTML=`
-    <button class="page-btn page-arrow" data-page="${page-1}" ${page<=1?'disabled':''} aria-label="前のページ">‹</button>
-    ${pageItems.map(p=>p==='…'
-      ? '<span class="page-ellipsis">…</span>'
-      : `<button class="page-btn ${p===page?'active':''}" data-page="${p}">${p}</button>`
-    ).join('')}
-    <button class="page-btn page-arrow" data-page="${page+1}" ${page>=total?'disabled':''} aria-label="次のページ">›</button>`;
-
-  pager.querySelectorAll('[data-page]').forEach(btn=>{
-    btn.onclick=()=>{
-      if(btn.disabled)return;
-      const next=Number(btn.dataset.page);
-      if(!Number.isFinite(next)||next<1||next>total||next===page)return;
-      page=next;
-      renderResults();
-      window.scrollTo({top:0,behavior:'smooth'});
-    };
-  });
-
-  document.querySelectorAll('.card').forEach(el=>el.onclick=()=>{
-    const x=cards.find(x=>String(x.id)===String(el.dataset.id));
-    if(!x)return;
-    $('#modal-img').src=x.image_url;
-    $('#modal').classList.add('open');
-  });
-}
-
-load();
+})();
