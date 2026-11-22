@@ -1,8 +1,8 @@
 # サイトB 公開画面の4桁PIN導入（サーバー側認証）
 
-2026-11-23時点：GitHub側のPIN画面とGAS追加用コードは準備済みです。
-**公開画面のPIN認証はまだ有効になっていません。**
-`assets/config.js` の `pinAuthEnabled:false` は、GAS側で保護できていない間に画面だけをロックしてしまうことを防ぐための設定です。
+2026-11-23時点：サイトBの公開画面は `assets/config.js` の `pinAuthEnabled:true` に切り替え済みです。
+GAS側はユーザーから再デプロイ完了の連絡を受けていますが、こちらからGASの実際のHTTP応答は取得できていないため、**公開一覧のブロックとPINログインが実稼働しているかは未検証**です。
+サーバーの導入方法は、再設定や障害復旧のために以下に残しています。
 
 ## 対象・仕様
 
@@ -72,9 +72,9 @@ function siteBOriginalDoPost(e) {
 
 管理画面のログイン・一覧取得が従来どおり動作することも確認してください。
 
-## 作業C：サイトBのPIN画面を有効化
+## 作業C：サイトBのPIN画面の有効化（実施済み）
 
-**GAS側の旧公開APIがブロックされ、サーバー側の認証が正常に動くと確認できてから**、[GitHubの `assets/config.js`](https://github.com/uoxou910/aiprif-private/blob/main/assets/config.js) の次の値を変更します。
+再設定時は、**GAS側の旧公開APIがブロックされ、サーバー側の認証が正常に動くと確認できてから**、[GitHubの `assets/config.js`](https://github.com/uoxou910/aiprif-private/blob/main/assets/config.js) の次の値を変更します。
 
 ```javascript
 pinAuthEnabled:true
