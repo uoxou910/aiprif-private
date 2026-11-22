@@ -6,6 +6,12 @@ function siteBListThumb(url){
  return src+'&sz=w480';
 }
 
+// Darkened card metadata is an invisible suffix in the original GAS code field.
+const DARK_CODE_MARK='\u2063\u2063\u2063';
+const publicCard=card=>{
+ const code=String(card.code??'');
+ return {...card,code:code.endsWith(DARK_CODE_MARK)?code.slice(0,-DARK_CODE_MARK.length):code};
+};
 let cards=[],query='',page=1,lastCardsUpdated='';const PAGE=20;
 function dateUpdate(){
  const timestamps=[Date.parse(lastCardsUpdated||''),...cards.map(x=>Date.parse(x.updated_at||x.created_at||''))].filter(Number.isFinite);
@@ -38,7 +44,7 @@ $$('.card-picture').forEach(el=>el.addEventListener('click',()=>{const x=cards.f
 $('#query').addEventListener('input',e=>{query=e.target.value;page=1;render();});$('#close').onclick=()=>$('#overlay').classList.add('hidden');$('#overlay').onclick=e=>{if(e.target.id==='overlay')$('#overlay').classList.add('hidden');};document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#overlay').classList.add('hidden')});
 try{
  const d=await api('public');
- cards=(Array.isArray(d.cards)?d.cards:[]).filter(x=>x&&x.visible!==false&&typeof x.code==='string');
+ cards=(Array.isArray(d.cards)?d.cards:[]).filter(x=>x&&x.visible!==false&&typeof x.code==='string').map(publicCard);
  lastCardsUpdated=d.lastCardsUpdated||'';
  $('#update').textContent=dateUpdate();
  render();
