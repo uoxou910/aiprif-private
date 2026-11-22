@@ -325,6 +325,7 @@ function setupSiteBInputHistory(extra=[]){
   input.addEventListener('input',()=>show(input));
   input.addEventListener('focus',()=>show(input));
   input.addEventListener('keydown',e=>{
+   if(e.isComposing||e.keyCode===229)return;
    if(popup.hidden||input!==current)return;
    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
     e.preventDefault();
