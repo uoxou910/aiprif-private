@@ -6,11 +6,18 @@ function siteBListThumb(url){
  return src+'&sz=w480';
 }
 
-// Darkened card metadata is an invisible suffix in the original GAS code field.
+// Site B's original GAS carries darkened / Mikuko flags as invisible name suffixes.
+// Never display the metadata on the public card list or in public search.
 const DARK_CODE_MARK='\u2063\u2063\u2063';
+const MIKUKO_CODE_MARK='\u2064\u2064\u2064';
 const publicCard=card=>{
- const code=String(card.code??'');
- return {...card,code:code.endsWith(DARK_CODE_MARK)?code.slice(0,-DARK_CODE_MARK.length):code};
+ let code=String(card.code??'');
+ for(;;){
+  if(code.endsWith(DARK_CODE_MARK))code=code.slice(0,-DARK_CODE_MARK.length);
+  else if(code.endsWith(MIKUKO_CODE_MARK))code=code.slice(0,-MIKUKO_CODE_MARK.length);
+  else break;
+ }
+ return {...card,code};
 };
 let cards=[],query='',page=1,lastCardsUpdated='';const PAGE=20;
 function dateUpdate(){
