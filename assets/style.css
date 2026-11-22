@@ -1014,3 +1014,44 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-dark {
  body[data-page="edit"] .card-entry-dialog .site-b-upload-dark {font-size:11px;}
  body[data-page="edit"] .card-entry-dialog .upload-entry {gap:7px;}
 }
+
+/* Site B: multiple independent card flags (darkened + Mikuko). */
+body[data-page="edit"] .site-b-search-filter-row {
+ max-width:980px;
+ gap:12px;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
+ display:flex;
+ flex:0 0 auto;
+ flex-direction:column;
+ align-items:flex-start;
+ justify-content:center;
+ gap:10px;
+}
+body[data-page="edit"] .site-b-edit-header {
+ flex-wrap:wrap;
+}
+body[data-page="edit"] .site-b-edit-header-right {
+ margin-left:auto;
+}
+@media (max-width:499px) {
+ body[data-page="edit"] .site-b-search-filter-row {gap:8px;}
+ body[data-page="edit"] .site-b-search-filter-row > .search {padding-left:11px;padding-right:11px;gap:8px;}
+ body[data-page="edit"] .card-entry-dialog .upload-entry {
+  display:grid;
+  grid-template-columns:65px minmax(0,1fr) 32px;
+  grid-template-rows:auto auto;
+  column-gap:8px;
+  row-gap:7px;
+ }
+ body[data-page="edit"] .card-entry-dialog .upload-thumb {grid-column:1;grid-row:1;}
+ body[data-page="edit"] .card-entry-dialog .upload-fields {grid-column:2;grid-row:1;}
+ body[data-page="edit"] .card-entry-dialog .upload-remove {grid-column:3;grid-row:1;}
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
+  grid-column:2 / 4;
+  grid-row:2;
+  flex-direction:row;
+  flex-wrap:wrap;
+  gap:12px;
+ }
+}
