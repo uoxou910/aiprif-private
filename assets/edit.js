@@ -233,10 +233,14 @@ function siteBInputHistory(kind,extra=[]){
 function setupSiteBInputHistory(extra=[]){
  const host=$('#editor-host');
  if(!host)return;
- const datalists=document.createElement('div');
- datalists.hidden=true;
- datalists.innerHTML='<datalist id="site-b-code-history"></datalist><datalist id="site-b-chara-history"></datalist>';
- host.appendChild(datalists);
+ let datalists=host.querySelector('#site-b-input-history');
+ if(!datalists){
+  datalists=document.createElement('div');
+  datalists.id='site-b-input-history';
+  datalists.hidden=true;
+  datalists.innerHTML='<datalist id="site-b-code-history"></datalist><datalist id="site-b-chara-history"></datalist>';
+  host.appendChild(datalists);
+ }
  const refresh=()=>{
   const code=host.querySelector('#site-b-code-history');
   const chara=host.querySelector('#site-b-chara-history');
