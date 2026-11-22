@@ -384,7 +384,7 @@ function openUploader(){
   heic:'image/heic',heif:'image/heif',tif:'image/tiff',tiff:'image/tiff'
  };
  const MAX_IMAGE=8*1024*1024,MAX_ZIP=150*1024*1024,MAX_UNPACKED=180*1024*1024;
- const entries=[];let serial=0,preparing=false,submitting=false,closed=false;
+ const entries=[];let serial=0,preparing=false,submitting=false,closed=false,copyFirstChara=false;
  const getExt=name=>String(name).split('.').pop().toLowerCase();
  const isImageName=name=>Object.prototype.hasOwnProperty.call(imageMime,getExt(name));
  const displayName=path=>String(path).replace(/\\/g,'/').split('/').pop();
@@ -420,6 +420,7 @@ function openUploader(){
   </div>
   <input id="upload-files" type="file" accept="image/*,.zip,application/zip,application/x-zip-compressed" multiple hidden>
   <p class="site-b-upload-status" id="upload-status" role="status" aria-live="polite" hidden></p>
+  <label id="site-b-chara-copy-row" class="card-chara-bulk hidden"><input type="checkbox" id="site-b-chara-copy">一番上のキャラ名を全てのキャラ名欄に反映する</label>
   <div id="upload-details" class="upload-entries"></div>
   <div class="dialog-actions hidden" id="upload-actions">
    <button class="btn primary" id="upload-save" type="button">追加する</button>
@@ -433,8 +434,15 @@ function openUploader(){
  $('#site-b-upload-zoom-close').onclick=closeSiteBUploadZoom;
  zoom.onclick=e=>{if(e.target===zoom)closeSiteBUploadZoom();};
  const zone=$('#upload-zone'),picker=$('#upload-files'),submit=$('#upload-save'),actions=$('#upload-actions');
+ const syncFirstChara=()=>{
+  if(!copyFirstChara||entries.length<2)return;
+  const first=entries[0].chara;
+  for(let i=1;i<entries.length;i++)entries[i].chara=first;
+  $('#upload-details')?.querySelectorAll('input[data-chara]').forEach((input,i)=>{if(i>0)input.value=first;});
+ };
  const paint=()=>{
   const host=$('#upload-details');if(!host)return;
+  if(entries.length<2)copyFirstChara=false;
   host.innerHTML=entries.map((item,i)=>`<div class="upload-entry" data-entry="${item.key}">
    <button type="button" class="upload-thumb site-b-upload-zoom-trigger" data-zoom="${item.key}" aria-label="${i+1}件目の画像を拡大"><img src="${esc(item.preview)}" alt="画像プレビュー" loading="lazy"></button>
    <div class="upload-fields">
@@ -443,6 +451,11 @@ function openUploader(){
    </div>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
+  const bulkRow=$('#site-b-chara-copy-row'),bulkCheck=$('#site-b-chara-copy');
+  bulkRow.classList.toggle('hidden',entries.length<2);
+  bulkCheck.checked=copyFirstChara;
+  bulkCheck.onchange=()=>{copyFirstChara=bulkCheck.checked;syncFirstChara();};
+  syncFirstChara();
   actions.classList.toggle('hidden',entries.length===0);
   submit.textContent=`${entries.length}件を追加する`;
   setupSiteBInputHistory(entries);
@@ -455,8 +468,12 @@ function openUploader(){
   host.querySelectorAll('[data-code]').forEach(input=>input.oninput=()=>{
    const item=entries.find(x=>x.key===input.dataset.code);if(item)item.code=input.value;
   });
-  host.querySelectorAll('[data-chara]').forEach(input=>input.oninput=()=>{
+  host.querySelectorAll('[data-chara]').forEach((input,i)=>input.oninput=()=>{
    const item=entries.find(x=>x.key===input.dataset.chara);if(item)item.chara=input.value;
+   if(copyFirstChara){
+    if(i===0)syncFirstChara();
+    else{copyFirstChara=false;bulkCheck.checked=false;}
+   }
   });
   host.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
    if(preparing||submitting)return;
