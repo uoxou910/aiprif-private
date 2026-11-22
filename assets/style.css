@@ -879,3 +879,40 @@ body[data-page="edit"] #site-b-upload-zoom img {
   height:auto;
   object-fit:contain;
 }
+
+/* Site B: filtered, editable name suggestions directly below the active field. */
+body[data-page="edit"] .site-b-name-popup {
+  position:fixed;
+  z-index:95;
+  display:block;
+  box-sizing:border-box;
+  padding:5px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid #e4e0e9;
+  border-radius:11px;
+  background:#fff;
+  box-shadow:0 10px 28px rgba(35,29,42,.17);
+}
+body[data-page="edit"] .site-b-name-popup[hidden] {display:none!important;}
+body[data-page="edit"] .site-b-name-option {
+  display:block;
+  width:100%;
+  padding:10px 12px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:#302a35;
+  font-size:14px;
+  line-height:1.5;
+  text-align:left;
+  overflow-wrap:anywhere;
+  cursor:pointer;
+}
+body[data-page="edit"] .site-b-name-option:hover,
+body[data-page="edit"] .site-b-name-option.is-active {
+  background:#f0edf5;
+}
+@media(max-width:699px) {
+  body[data-page="edit"] .site-b-name-option {font-size:16px;}
+}
