@@ -215,6 +215,44 @@ function closeSiteBUploadZoom(){
  zoom.querySelector('img')?.removeAttribute('src');
  return true;
 }
+
+// Suggestions come from existing Site B cards and current unsaved ZIP entries.
+// A datalist is advisory: users can always type/edit any name after selection.
+function siteBInputHistory(kind,extra=[]){
+ const field=kind==='code'?'code':'chara';
+ const seen=new Set(),values=[];
+ for(const item of [...extra,...cards]){
+  const value=String(item?.[field]||'').trim();
+  const key=normalizeSearchText(value);
+  if(!value||seen.has(key))continue;
+  seen.add(key);values.push(value);
+  if(values.length>=500)break;
+ }
+ return values.map(value=>`<option value="${esc(value)}"></option>`).join('');
+}
+function setupSiteBInputHistory(extra=[]){
+ const host=$('#editor-host');
+ if(!host)return;
+ const datalists=document.createElement('div');
+ datalists.hidden=true;
+ datalists.innerHTML='<datalist id="site-b-code-history"></datalist><datalist id="site-b-chara-history"></datalist>';
+ host.appendChild(datalists);
+ const refresh=()=>{
+  const code=host.querySelector('#site-b-code-history');
+  const chara=host.querySelector('#site-b-chara-history');
+  if(code)code.innerHTML=siteBInputHistory('code',extra);
+  if(chara)chara.innerHTML=siteBInputHistory('chara',extra);
+ };
+ refresh();
+ const fields=host.querySelectorAll('input[data-code],input[data-chara],input.chara,input.code');
+ fields.forEach(input=>{
+  const kind=input.matches('input[data-code],input.code')?'code':'chara';
+  input.setAttribute('list','site-b-'+kind+'-history');
+  input.setAttribute('autocomplete','off');
+  input.addEventListener('focus',refresh);
+ });
+}
+
 function openUploader(){
  const imageMime={
   png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',
@@ -284,6 +322,7 @@ function openUploader(){
   </div>`).join('');
   actions.classList.toggle('hidden',entries.length===0);
   submit.textContent=`${entries.length}件を追加する`;
+  setupSiteBInputHistory(entries);
   host.querySelectorAll('[data-zoom]').forEach(button=>button.onclick=()=>{
    const item=entries.find(x=>x.key===button.dataset.zoom);
    if(!item)return;
@@ -395,6 +434,7 @@ function openEditor(id){
  $('#edit-close').onclick=closeEditor;$('#edit-cancel').onclick=closeEditor;
  $('#edit-shade').onclick=e=>{if(e.target.id==='edit-shade')closeEditor();};
  $('#edit-save').onclick=()=>saveCard(id);
+ setupSiteBInputHistory();
 }
 function closeEditor(){if(siteBUploadInProgress)return;const host=$('#editor-host');if(host)host.innerHTML='';}
 function openPreview(id){
