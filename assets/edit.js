@@ -3,6 +3,25 @@ const C=window.SITE_D_CONFIG||{};
 let cards=[],q='',deleteMode=false,selected=new Set(),
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
 let siteBUploadInProgress=false;
+let siteBSaveInProgress=false;
+function siteBShowSaving(message){
+ let el=document.getElementById('site-b-save-progress');
+ if(!el){
+  el=document.createElement('div');
+  el.id='site-b-save-progress';
+  el.setAttribute('role','status');
+  el.setAttribute('aria-live','polite');
+  document.body.appendChild(el);
+ }
+ el.textContent=message;
+}
+function siteBHideSaving(){document.getElementById('site-b-save-progress')?.remove();}
+window.addEventListener('beforeunload',e=>{
+ if(siteBUploadInProgress||siteBSaveInProgress){
+  e.preventDefault();
+  e.returnValue='';
+ }
+});
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({
@@ -526,6 +545,7 @@ function openUploader(){
  };
 }
 function openEditor(id){
+ if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
  const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
  $('#editor-host').innerHTML=`<div class="dialog-shade" id="edit-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを編集">
  <div class="row between"><h2>フレカを編集</h2><button type="button" class="tiny-btn" id="edit-close">×</button></div>
@@ -567,24 +587,39 @@ async function toggleVisibility(id,currentVisible){
 }
 
 async function saveCard(id){
-  const chara=
-    document.querySelector('.chara[data-id="'+id+'"]')?.value.trim()||'';
-  const code=
-    document.querySelector('.code[data-id="'+id+'"]')?.value.trim()||'';
+ if(siteBUploadInProgress||siteBSaveInProgress){toast('ほかの保存処理が完了してから操作してください');return;}
+ const chara=document.querySelector('.chara[data-id="'+id+'"]')?.value.trim()||'';
+ const code=document.querySelector('.code[data-id="'+id+'"]')?.value.trim()||'';
+ const original=cards.find(x=>String(x.id)===String(id));
+ if(!original)return;
+ if(original.chara===chara&&original.code===code){closeEditor();return;}
 
-  try{
-    await post('update',{id,chara,code});
-
-    const x=cards.find(x=>x.id===id);
-    if(x){
-      x.chara=chara;
-      x.code=code;
-    }
-
-    closeEditor();draw();toast('保存しました');
-  }catch(e){
-    alert('保存に失敗しました：'+e.message);
+ siteBSaveInProgress=true;
+ // Start the request, then close immediately; report success only after GAS confirms.
+ const saving=post('update',{id,chara,code});
+ closeEditor();
+ siteBShowSaving('フレカを保存中… このページを閉じないでください');
+ try{
+  await saving;
+  const card=cards.find(x=>String(x.id)===String(id));
+  if(card){card.chara=chara;card.code=code;}
+  if($('#list'))draw();
+  toast('保存しました');
+ }catch(e){
+  // The saved data is not changed locally on failure.
+  if($('#list')&&!$('#edit-shade')&&!$('#upload-shade')){
+   siteBSaveInProgress=false;
+   openEditor(id);
+   const c=document.querySelector('.chara[data-id="'+id+'"]');
+   const n=document.querySelector('.code[data-id="'+id+'"]');
+   if(c)c.value=chara;
+   if(n)n.value=code;
   }
+  alert('保存に失敗しました。入力内容は編集欄に残しています：'+e.message);
+ }finally{
+  siteBSaveInProgress=false;
+  siteBHideSaving();
+ }
 }
 
 function readDataURL(file){
