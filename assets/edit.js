@@ -1,6 +1,6 @@
 (function(){
 const C=window.SITE_D_CONFIG||{};
-let cards=[],q='',darkOnly=false,mikukoOnly=false,deleteMode=false,selected=new Set(),
+let cards=[],q='',darkOnly=false,mikukoOnly=false,bulkSelectMode=false,selected=new Set(),bulkDarkTouched=false,
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
 let siteBUploadInProgress=false;
 let siteBSaveInProgress=false;
@@ -184,15 +184,15 @@ async function load(){
 function render(){
  const publicCount=cards.filter(x=>x.visible!==false).length;
  document.body.innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner">
- <strong class="app-title">フレカ管理</strong><div class="header-actions"><button class="hamburger" id="menu-toggle" type="button" aria-expanded="false" aria-label="メニューを開く"><svg class="hamburger-lines" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header>
+ <strong class="app-title">フレカ管理</strong><div class="header-actions site-b-admin-header-actions"><button class="hamburger" id="menu-toggle" type="button" aria-expanded="false" aria-label="メニューを開く"><svg class="hamburger-lines" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button><button type="button" class="site-b-header-bulk" id="bulk-toggle" aria-pressed="${bulkSelectMode}">${bulkSelectMode?'選択終了':'一括選択'}</button><button type="button" class="btn primary site-b-header-add" id="upload-trigger">＋ フレカを追加</button></div></div></div></header>
  <div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button class="selected" id="menu-cards" type="button">フレカ管理</button><button id="logout" type="button">ログアウト</button></nav>
  <button class="drawer-close" id="drawer-close" type="button" aria-hidden="true" aria-label="メニューを閉じる">×</button>
  <div class="admin-shell"><div class="animated-content">
- <div class="section-head"><h2>フレカ一覧 <small class="note">${cards.length}件・公開${publicCount}件</small></h2><div class="row"><button class="tiny-btn" id="del" type="button">一括削除</button><button class="btn primary" type="button" id="upload-trigger">＋ フレカを追加</button></div></div>
+ <div class="section-head"><h2>フレカ一覧 <small class="note">${cards.length}件・公開${publicCount}件</small></h2></div>
  <input id="files" type="file" accept="image/*" multiple hidden>
  <div class="site-b-search-filter-row"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="dark-only" ${darkOnly?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="mikuko-only" ${mikukoOnly?'checked':''}>ミクコ</label></div>
  <div class="admin-card-grid" id="list"></div></div></div>
- <div class="site-b-bulkbar" id="bar"><span id="selCount">0件選択中</span><button type="button" class="tiny-btn" id="cancel">キャンセル</button><button type="button" class="btn danger" id="exec">削除</button></div>
+ <div class="site-b-bulkbar" id="bar" role="group" aria-label="選択フレカの一括操作"><span id="selCount" aria-live="polite">0件選択中</span><label class="site-b-bulk-dark-check"><input type="checkbox" id="bulk-dark-checkbox">ダーク化</label><button type="button" class="btn primary" id="bulk-dark-apply" disabled>反映</button><button type="button" class="btn danger" id="bulk-delete" disabled>削除</button><button type="button" class="tiny-btn" id="bulk-cancel">キャンセル</button></div>
  <div class="overlay hidden" id="adminModal"><img id="adminModalImg" alt="フレカ拡大"><button class="overlay-close" id="adminModalClose" type="button" aria-label="閉じる">×</button></div>
  <div id="editor-host"></div><div class="toast" id="toast"></div>`;
  const menu=$('#menu-toggle'),panel=$('#hamburger-panel'),scrim=$('#menu-scrim'),close=$('#drawer-close');
@@ -212,9 +212,16 @@ function render(){
  let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
  $('#dark-only').onchange=e=>{darkOnly=e.target.checked;draw();};
  $('#mikuko-only').onchange=e=>{mikukoOnly=e.target.checked;draw();};
- $('#del').onclick=()=>{deleteMode=!deleteMode;selected.clear();updateBar();draw();};
- $('#cancel').onclick=()=>{deleteMode=false;selected.clear();updateBar();draw();};
- $('#exec').onclick=deleteSelected;$('#logout').onclick=logout;
+ $('#bulk-toggle').onclick=()=>{
+  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
+  bulkSelectMode=!bulkSelectMode;
+  selected.clear();bulkDarkTouched=false;
+  draw();
+ };
+ $('#bulk-cancel').onclick=()=>{bulkSelectMode=false;selected.clear();bulkDarkTouched=false;draw();};
+ $('#bulk-dark-checkbox').onchange=()=>{bulkDarkTouched=true;updateBar();};
+ $('#bulk-dark-apply').onclick=applySelectedDark;
+ $('#bulk-delete').onclick=deleteSelected;$('#logout').onclick=logout;
  $('#adminModalClose').onclick=closePreview;$('#adminModal').onclick=e=>{if(e.target.id==='adminModal')closePreview();};
  updateBar();
 }
@@ -231,12 +238,12 @@ function draw(){
  const list=filteredCards();
  $('#list').innerHTML=list.length?list.map((x,i)=>{
   const visible=x.visible!==false,id=esc(x.id);
-  return `<article class="admin-card ${visible?'':'site-b-unlisted'}">
+  return `<article class="admin-card ${visible?'':'site-b-unlisted'} ${bulkSelectMode&&selected.has(String(x.id))?'site-b-card-selected':''}">
    <div class="site-b-picture">
-    <button type="button" class="admin-image" data-preview="${id}" aria-label="画像を拡大">
+    <button type="button" class="admin-image" data-preview="${id}" aria-label="${bulkSelectMode?'フレカを選択':'画像を拡大'}">
       ${x.image_url?`<img src="${esc(siteBListThumb(x.image_url))}" alt="${esc(x.code)}" loading="${i<2?'eager':'lazy'}" decoding="async">`:'<span>画像なし</span>'}
     </button>
-    ${deleteMode?`<button type="button" class="site-b-selectbox ${selected.has(x.id)?'selected':''}" data-select="${id}" aria-pressed="${selected.has(x.id)}">${selected.has(x.id)?'✓':'選択'}</button>`:''}
+    ${bulkSelectMode?`<button type="button" class="site-b-selectbox ${selected.has(String(x.id))?'selected':''}" data-select="${id}" aria-label="${esc(x.code||'コーデ名未設定')}を選択" aria-pressed="${selected.has(String(x.id))}">${selected.has(String(x.id))?'✓':'選択'}</button>`:''}
    </div>
    <div class="admin-card-body">
     <div class="admin-title">${esc(x.code||'コーデ名未設定')}</div>
@@ -248,13 +255,16 @@ function draw(){
     </div>
    </div></article>`;
  }).join(''):'<div class="placeholder-panel">フレカがありません</div>';
- document.querySelectorAll('[data-preview]').forEach(b=>b.onclick=()=>{if(!deleteMode)openPreview(b.dataset.preview);});
+ document.querySelectorAll('[data-preview]').forEach(b=>b.onclick=()=>{
+  if(siteBUploadInProgress||siteBSaveInProgress)return;
+  if(bulkSelectMode)toggleCardSelection(b.dataset.preview);
+  else openPreview(b.dataset.preview);
+ });
  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
  document.querySelectorAll('[data-visibility]').forEach(b=>b.onclick=()=>toggleVisibility(b.dataset.visibility,b.dataset.currentVisible==='true'));
  document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteOne(b.dataset.delete));
- document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{
-  const id=b.dataset.select;selected.has(id)?selected.delete(id):selected.add(id);updateBar();draw();
- });
+ document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>toggleCardSelection(b.dataset.select));
+ updateBar();
 }
 function closeSiteBUploadZoom(){
  const zoom=document.querySelector('#site-b-upload-zoom');
@@ -753,37 +763,99 @@ async function addFiles(files){
   toast(completed===list.length?'追加しました':`${completed}/${list.length}件追加しました`);
 }
 
+function toggleCardSelection(id){
+ if(!bulkSelectMode||siteBUploadInProgress||siteBSaveInProgress)return;
+ const key=String(id);
+ if(selected.has(key))selected.delete(key);else selected.add(key);
+ bulkDarkTouched=false;
+ draw();
+}
+async function applySelectedDark(){
+ if(siteBUploadInProgress||siteBSaveInProgress)return;
+ const target=$('#bulk-dark-checkbox');
+ if(!selected.size||!bulkDarkTouched||!target)return;
+ const desired=target.checked;
+ const work=cards.filter(card=>selected.has(String(card.id))&&Boolean(card.darkened)!==desired);
+ if(!work.length){bulkDarkTouched=false;updateBar();toast('変更するフレカはありません');return;}
+ siteBSaveInProgress=true;
+ const errors=[];
+ try{
+  for(let i=0;i<work.length;i++){
+   const card=work[i];
+   siteBShowSaving(`ダーク化を一括変更中… ${i+1}/${work.length}件。このページを閉じないでください`);
+   try{
+    await post('update',{id:card.id,chara:card.chara,code:siteBEncodeCode(card.code,desired,card.mikuko)});
+    card.darkened=desired;
+   }catch(e){errors.push(`${card.chara} / ${card.code}：${e.message}`);}
+  }
+ }finally{
+  siteBSaveInProgress=false;
+  siteBHideSaving();
+  bulkDarkTouched=false;
+  if(!errors.length){bulkSelectMode=false;selected.clear();}
+  draw();
+ }
+ if(errors.length)alert(`ダーク化を変更できなかったフレカが${errors.length}件あります。\n${errors.slice(0,5).join('\n')}`);
+ else toast(`${work.length}件のダーク化を${desired?'設定':'解除'}しました`);
+}
 async function deleteOne(id){
-  if(confirm('このカードを削除しますか？')){
-    await remove([id]);
-  }
+ if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
+ if(confirm('このカードを削除しますか？'))await remove([String(id)]);
 }
-
 async function deleteSelected(){
-  if(selected.size && confirm(selected.size+'件削除しますか？')){
-    await remove([...selected]);
-  }
+ if(siteBUploadInProgress||siteBSaveInProgress)return;
+ if(selected.size&&confirm(`選択した${selected.size}件を削除しますか？`))await remove([...selected]);
 }
-
 async function remove(ids){
-  try{
-    for(const id of ids)await post('delete',{id});
-
-    cards=cards.filter(x=>!ids.includes(x.id));
-    selected.clear();
-    deleteMode=false;
-
-    render();
-    toast('削除しました');
-  }catch(e){
-    alert('削除に失敗しました：'+e.message);
+ if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
+ const work=[...new Set(ids.map(String))];
+ if(!work.length)return;
+ siteBSaveInProgress=true;
+ const succeeded=[],errors=[];
+ try{
+  for(let i=0;i<work.length;i++){
+   const id=work[i];
+   siteBShowSaving(`フレカを削除中… ${i+1}/${work.length}件。このページを閉じないでください`);
+   try{
+    await post('delete',{id});
+    succeeded.push(id);
+   }catch(e){errors.push(`${id}：${e.message}`);}
   }
+ }finally{
+  siteBSaveInProgress=false;
+  siteBHideSaving();
+  if(succeeded.length){
+   const removed=new Set(succeeded);
+   cards=cards.filter(card=>!removed.has(String(card.id)));
+   for(const id of succeeded)selected.delete(id);
+  }
+  if(!errors.length){bulkSelectMode=false;selected.clear();}
+  bulkDarkTouched=false;
+  render();
+ }
+ if(succeeded.length)toast(`${succeeded.length}件を削除しました`);
+ if(errors.length)alert(`${errors.length}件を削除できませんでした。\n${errors.slice(0,5).join('\n')}`);
 }
-
 function updateBar(){
  const bar=$('#bar');if(!bar)return;
- bar.classList.toggle('show',deleteMode);$('#selCount').textContent=selected.size+'件選択中';
+ const chosen=cards.filter(card=>selected.has(String(card.id)));
+ const checkbox=$('#bulk-dark-checkbox'),apply=$('#bulk-dark-apply'),del=$('#bulk-delete');
+ bar.classList.toggle('show',bulkSelectMode);
+ $('#selCount').textContent=chosen.length+'件選択中';
+ const allDark=chosen.length>0&&chosen.every(card=>card.darkened===true);
+ if(!bulkDarkTouched){
+  checkbox.checked=allDark;
+  checkbox.indeterminate=!allDark&&chosen.some(card=>card.darkened===true);
+ }
+ checkbox.disabled=!chosen.length||siteBUploadInProgress||siteBSaveInProgress;
+ apply.disabled=!chosen.length||!bulkDarkTouched||siteBUploadInProgress||siteBSaveInProgress;
+ del.disabled=!chosen.length||siteBUploadInProgress||siteBSaveInProgress;
+ const toggle=$('#bulk-toggle');
+ if(toggle){
+  toggle.textContent=bulkSelectMode?'選択終了':'一括選択';
+  toggle.classList.toggle('is-active',bulkSelectMode);
+  toggle.setAttribute('aria-pressed',String(bulkSelectMode));
+ }
 }
-
 init();
 })();
