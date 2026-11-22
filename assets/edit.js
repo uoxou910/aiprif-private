@@ -1,6 +1,6 @@
 (function(){
 const C=window.SITE_D_CONFIG||{};
-let cards=[],q='',darkOnly=false,deleteMode=false,selected=new Set(),
+let cards=[],q='',darkOnly=false,mikukoOnly=false,deleteMode=false,selected=new Set(),
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
 let siteBUploadInProgress=false;
 let siteBSaveInProgress=false;
@@ -69,19 +69,31 @@ async function post(action,data={}){
   return j;
 }
 
-// The existing Site B GAS only stores card names, so persist the darkened flag
-// as an invisible suffix on the code field. Strip it at every display boundary.
+// The original Site B GAS has no separate tag fields; keep both flags as
+// distinct invisible code suffixes, then remove them at every display boundary.
+// The preexisting darkened suffix must remain compatible with older saved cards.
 const DARK_CODE_MARK='\u2063\u2063\u2063';
-function siteBDecodeCard(card){
- const raw=String(card?.code??'');
- const marked=raw.endsWith(DARK_CODE_MARK);
- return {...card,code:marked?raw.slice(0,-DARK_CODE_MARK.length):raw,
-   darkened:marked||card?.darkened===true||String(card?.darkened).toLowerCase()==='true'};
+const MIKUKO_CODE_MARK='\u2064\u2064\u2064';
+function siteBCodeMeta(rawCode){
+ let code=String(rawCode??''),darkened=false,mikuko=false;
+ for(;;){
+  if(code.endsWith(DARK_CODE_MARK)){
+   code=code.slice(0,-DARK_CODE_MARK.length);darkened=true;
+  }else if(code.endsWith(MIKUKO_CODE_MARK)){
+   code=code.slice(0,-MIKUKO_CODE_MARK.length);mikuko=true;
+  }else break;
+ }
+ return {code,darkened,mikuko};
 }
-function siteBEncodeCode(code,darkened){
- const text=String(code??'');
- const plain=text.endsWith(DARK_CODE_MARK)?text.slice(0,-DARK_CODE_MARK.length):text;
- return darkened?plain+DARK_CODE_MARK:plain;
+function siteBDecodeCard(card){
+ const meta=siteBCodeMeta(card?.code);
+ return {...card,code:meta.code,
+  darkened:meta.darkened||card?.darkened===true||String(card?.darkened).toLowerCase()==='true',
+  mikuko:meta.mikuko||card?.mikuko===true||String(card?.mikuko).toLowerCase()==='true'};
+}
+function siteBEncodeCode(code,darkened,mikuko){
+ const plain=siteBCodeMeta(code).code;
+ return plain+(darkened?DARK_CODE_MARK:'')+(mikuko?MIKUKO_CODE_MARK:'');
 }
 function normalizeSearchText(s){
   return String(s??'')
@@ -178,7 +190,7 @@ function render(){
  <div class="admin-shell"><div class="animated-content">
  <div class="section-head"><h2>フレカ一覧 <small class="note">${cards.length}件・公開${publicCount}件</small></h2><div class="row"><button class="tiny-btn" id="del" type="button">一括削除</button><button class="btn primary" type="button" id="upload-trigger">＋ フレカを追加</button></div></div>
  <input id="files" type="file" accept="image/*" multiple hidden>
- <div class="site-b-search-filter-row"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="dark-only" ${darkOnly?'checked':''}>ダーク化</label></div>
+ <div class="site-b-search-filter-row"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="dark-only" ${darkOnly?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="mikuko-only" ${mikukoOnly?'checked':''}>ミクコ</label></div>
  <div class="admin-card-grid" id="list"></div></div></div>
  <div class="site-b-bulkbar" id="bar"><span id="selCount">0件選択中</span><button type="button" class="tiny-btn" id="cancel">キャンセル</button><button type="button" class="btn danger" id="exec">削除</button></div>
  <div class="overlay hidden" id="adminModal"><img id="adminModalImg" alt="フレカ拡大"><button class="overlay-close" id="adminModalClose" type="button" aria-label="閉じる">×</button></div>
@@ -199,6 +211,7 @@ function render(){
  $('#upload-trigger').onclick=openUploader;
  let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
  $('#dark-only').onchange=e=>{darkOnly=e.target.checked;draw();};
+ $('#mikuko-only').onchange=e=>{mikukoOnly=e.target.checked;draw();};
  $('#del').onclick=()=>{deleteMode=!deleteMode;selected.clear();updateBar();draw();};
  $('#cancel').onclick=()=>{deleteMode=false;selected.clear();updateBar();draw();};
  $('#exec').onclick=deleteSelected;$('#logout').onclick=logout;
@@ -209,6 +222,7 @@ function filteredCards(){
  const nq=normalizeSearchText(q);
  return cards.filter(x=>
   (!darkOnly||x.darkened===true)&&
+  (!mikukoOnly||x.mikuko===true)&&
   (!q||normalizeSearchText(`${x.chara} ${x.code}`).includes(nq))
  );
 }
@@ -463,7 +477,7 @@ function openUploader(){
     <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名" maxlength="120" value="${esc(item.chara)}">
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
    </div>
-   <label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label>
+<div class="site-b-upload-tags"><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-mikuko="${item.key}" ${item.mikuko?'checked':''}>ミクコ</label></div>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
   const bulkRow=$('#site-b-chara-copy-row'),bulkCheck=$('#site-b-chara-copy');
@@ -493,6 +507,9 @@ function openUploader(){
   host.querySelectorAll('[data-dark]').forEach(input=>input.onchange=()=>{
    const item=entries.find(x=>x.key===input.dataset.dark);if(item)item.darkened=input.checked;
   });
+  host.querySelectorAll('[data-mikuko]').forEach(input=>input.onchange=()=>{
+   const item=entries.find(x=>x.key===input.dataset.mikuko);if(item)item.mikuko=input.checked;
+  });
   host.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
    if(preparing||submitting)return;
    const i=entries.findIndex(x=>x.key===button.dataset.remove);
@@ -503,7 +520,7 @@ function openUploader(){
   if(!isImageName(file.name))return false;
   if(!file.size||file.size>MAX_IMAGE)throw Error(`${path}：画像は8MB以下にしてください`);
   entries.push({key:String(++serial),file,path,
-   code:'',chara:'',darkened:false,preview:URL.createObjectURL(file)});
+   code:'',chara:'',darkened:false,mikuko:false,preview:URL.createObjectURL(file)});
   return true;
  };
  const addFiles=async fileList=>{
@@ -554,7 +571,7 @@ function openUploader(){
  zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');addFiles(e.dataTransfer.files);};
  submit.onclick=async()=>{
  if(!entries.length||preparing||submitting||siteBUploadInProgress||siteBSaveInProgress)return;
- const work=entries.map(x=>({file:x.file,path:x.path,chara:x.chara.trim(),code:x.code.trim(),darkened:!!x.darkened}));
+ const work=entries.map(x=>({file:x.file,path:x.path,chara:x.chara.trim(),code:x.code.trim(),darkened:!!x.darkened,mikuko:!!x.mikuko}));
  if(work.some(x=>!x.chara||!x.code)){
   alert('すべての画像にキャラ名とコーデ名を入力してください。');
   return;
@@ -580,8 +597,8 @@ function openUploader(){
     const saved=await post('upload',{filename:item.file.name,mimeType:item.file.type||'image/png',data});
     uploadedId=saved.card?.id||'';
     if(!uploadedId)throw Error('アップロードしたカードIDが取得できませんでした');
-    await post('update',{id:uploadedId,chara:item.chara,code:siteBEncodeCode(item.code,item.darkened)});
-    created.push({...saved.card,id:uploadedId,chara:item.chara,code:item.code,darkened:item.darkened});
+    await post('update',{id:uploadedId,chara:item.chara,code:siteBEncodeCode(item.code,item.darkened,item.mikuko)});
+    created.push({...saved.card,id:uploadedId,chara:item.chara,code:item.code,darkened:item.darkened,mikuko:item.mikuko});
     complete++;
    }catch(err){
     if(uploadedId){
@@ -606,7 +623,7 @@ function openEditor(id){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
  const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
  $('#editor-host').innerHTML=`<div class="dialog-shade" id="edit-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを編集">
- <div class="row between site-b-edit-header"><h2>フレカを編集</h2><div class="site-b-edit-header-right"><label class="site-b-dark-check"><input id="edit-darkened" type="checkbox" ${x.darkened?'checked':''}>ダーク化</label><button type="button" class="tiny-btn" id="edit-close">×</button></div></div>
+ <div class="row between site-b-edit-header"><h2>フレカを編集</h2><div class="site-b-edit-header-right"><label class="site-b-dark-check"><input id="edit-darkened" type="checkbox" ${x.darkened?'checked':''}>ダーク化</label><label class="site-b-dark-check"><input id="edit-mikuko" type="checkbox" ${x.mikuko?'checked':''}>ミクコ</label><button type="button" class="tiny-btn" id="edit-close">×</button></div></div>
  <label class="field">キャラ名<input type="text" class="chara" data-id="${esc(id)}" value="${esc(x.chara||'')}" placeholder="キャラ名" maxlength="120"></label>
  <label class="field">コーデ名<input type="text" class="code" data-id="${esc(id)}" value="${esc(x.code||'')}" placeholder="コーデ名" maxlength="120"></label>
  <div class="dialog-actions"><button type="button" class="btn" id="edit-cancel">キャンセル</button><button type="button" class="btn primary" id="edit-save">保存</button></div>
@@ -649,13 +666,14 @@ async function saveCard(id){
  const chara=document.querySelector('.chara[data-id="'+id+'"]')?.value.trim()||'';
  const code=document.querySelector('.code[data-id="'+id+'"]')?.value.trim()||'';
  const darkened=$('#edit-darkened')?.checked||false;
+ const mikuko=$('#edit-mikuko')?.checked||false;
  const original=cards.find(x=>String(x.id)===String(id));
  if(!original)return;
- if(original.chara===chara&&original.code===code&&Boolean(original.darkened)===darkened){closeEditor();return;}
+ if(original.chara===chara&&original.code===code&&Boolean(original.darkened)===darkened&&Boolean(original.mikuko)===mikuko){closeEditor();return;}
 
  siteBSaveInProgress=true;
  // Start the request, then close immediately; report success only after GAS confirms.
- const saving=post('update',{id,chara,code:siteBEncodeCode(code,darkened)});
+ const saving=post('update',{id,chara,code:siteBEncodeCode(code,darkened,mikuko)});
  closeEditor();
  siteBShowSaving('フレカを保存中… このページを閉じないでください');
  try{
@@ -665,11 +683,12 @@ async function saveCard(id){
    card.chara=chara;
    card.code=code;
    card.darkened=darkened;
+   card.mikuko=mikuko;
    if($('#list')){
     // Avoid rebuilding every image when only a label changed.
     const button=[...document.querySelectorAll('#list [data-edit]')].find(b=>b.dataset.edit===String(id));
     const row=button?.closest('.admin-card');
-    if(!q&&!darkOnly&&row){
+    if(!q&&!darkOnly&&!mikukoOnly&&row){
      const title=row.querySelector('.admin-title'),subtitle=row.querySelector('.admin-sub');
      if(title)title.textContent=card.code||'コーデ名未設定';
      if(subtitle)subtitle.textContent=(card.chara||'キャラ名未設定')+(card.visible===false?' ・ 非公開':'');
@@ -687,6 +706,7 @@ async function saveCard(id){
    if(c)c.value=chara;
    if(n)n.value=code;
    const dark=$('#edit-darkened');if(dark)dark.checked=darkened;
+   const miku=$('#edit-mikuko');if(miku)miku.checked=mikuko;
   }
   alert('保存に失敗しました。入力内容は編集欄に残しています：'+e.message);
  }finally{
