@@ -639,13 +639,13 @@ body[data-page="edit"] .admin-shell .search {
   z-index: 29;
 }
 /* A subtle elevation, without changing width, height, margins or typography. */
-body[data-page="view"] .search-dock > .search,
+body[data-page="view"] .site-b-public-search-row > .search,
 body[data-page="edit"] .admin-shell .search {
   background: rgb(250,249,252);
   box-shadow: 0 5px 18px rgba(39,32,49,.11), 0 1px 3px rgba(39,32,49,.035);
   transition: background 230ms ease, box-shadow 230ms ease;
 }
-body[data-page="view"] .search-dock > .search:focus-within,
+body[data-page="view"] .site-b-public-search-row > .search:focus-within,
 body[data-page="edit"] .admin-shell .search:focus-within {
   background: rgb(250,248,253);
   box-shadow: 0 7px 22px rgba(39,32,49,.13), inset 0 -2px #777086;
@@ -735,7 +735,7 @@ body[data-page="edit"] .admin-shell .search:focus-within {
     padding-top:13.5px;
     padding-bottom:13.5px;
   }
-  body[data-page="view"] .search-dock > .search {
+  body[data-page="view"] .site-b-public-search-row > .search {
     height:39px;
     min-height:39px;
   }
@@ -767,7 +767,7 @@ body[data-page="edit"] .admin-shell .search:focus-within {
     -webkit-backdrop-filter:none;
     backdrop-filter:none;
   }
-  body[data-page="view"] .search-dock > .search {
+  body[data-page="view"] .site-b-public-search-row > .search {
     position:relative;
     background:rgba(250,249,252,.86);
     border-radius:var(--radius-medium);
@@ -775,7 +775,7 @@ body[data-page="edit"] .admin-shell .search:focus-within {
     -webkit-backdrop-filter:blur(17px) saturate(1.15);
     backdrop-filter:blur(17px) saturate(1.15);
   }
-  body[data-page="view"] .search-dock > .search:focus-within {
+  body[data-page="view"] .site-b-public-search-row > .search:focus-within {
     background:rgba(250,248,253,.92);
     box-shadow:0 9px 28px rgba(39,32,49,.17),inset 0 -2px #777086;
   }
@@ -1147,4 +1147,58 @@ body[data-page="edit"] .site-b-bulkbar #selCount {
   justify-content:flex-end;
   width:100%;
  }
+}
+
+/* Site B public gallery: floating search and checkbox filters. */
+body[data-page="view"] .site-b-public-search-row {
+ display:flex;
+ align-items:center;
+ gap:12px;
+ width:100%;
+ max-width:980px;
+}
+body[data-page="view"] .site-b-public-search-row > .search {
+ flex:1 1 auto;
+ min-width:0;
+ width:100%;
+}
+body[data-page="view"] .site-b-public-filter-check {
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ flex:0 0 auto;
+ color:#595263;
+ font-size:12px;
+ line-height:1.5;
+ white-space:nowrap;
+ cursor:pointer;
+ user-select:none;
+}
+body[data-page="view"] .site-b-public-filter-check input[type="checkbox"] {
+ appearance:auto;
+ width:16px;
+ height:16px;
+ margin:0;
+ flex:0 0 auto;
+ accent-color:#746c83;
+ cursor:pointer;
+}
+@media(max-width:699px) {
+ body[data-page="view"] .site-b-public-search-row {gap:9px;}
+ body[data-page="view"] .site-b-public-search-row > .search {
+  padding-left:11px;
+  padding-right:11px;
+  gap:8px;
+ }
+}
+@media(max-width:430px) {
+ body[data-page="view"] .site-b-public-search-row {
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:7px 14px;
+ }
+ body[data-page="view"] .site-b-public-search-row > .search {
+  flex:1 0 100%;
+ }
+ body[data-page="view"] .site-b-public-filter-check {min-height:30px;}
 }
