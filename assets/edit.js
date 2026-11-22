@@ -1,6 +1,6 @@
 (function(){
 const C=window.SITE_D_CONFIG||{};
-let cards=[],q='',deleteMode=false,selected=new Set(),
+let cards=[],q='',darkOnly=false,deleteMode=false,selected=new Set(),
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
 let siteBUploadInProgress=false;
 let siteBSaveInProgress=false;
@@ -69,6 +69,20 @@ async function post(action,data={}){
   return j;
 }
 
+// The existing Site B GAS only stores card names, so persist the darkened flag
+// as an invisible suffix on the code field. Strip it at every display boundary.
+const DARK_CODE_MARK='\u2063\u2063\u2063';
+function siteBDecodeCard(card){
+ const raw=String(card?.code??'');
+ const marked=raw.endsWith(DARK_CODE_MARK);
+ return {...card,code:marked?raw.slice(0,-DARK_CODE_MARK.length):raw,
+   darkened:marked||card?.darkened===true||String(card?.darkened).toLowerCase()==='true'};
+}
+function siteBEncodeCode(code,darkened){
+ const text=String(code??'');
+ const plain=text.endsWith(DARK_CODE_MARK)?text.slice(0,-DARK_CODE_MARK.length):text;
+ return darkened?plain+DARK_CODE_MARK:plain;
+}
 function normalizeSearchText(s){
   return String(s??'')
     .normalize('NFKC')
@@ -148,7 +162,7 @@ async function load(){
   document.body.innerHTML='<div class="loading">読み込み中…</div>';
 
   try{
-    cards=(await post('adminList')).cards||[];
+    cards=((await post('adminList')).cards||[]).map(siteBDecodeCard);
     render();
   }catch(e){
     showMessage('読み込みに失敗しました',e.message);
@@ -164,7 +178,7 @@ function render(){
  <div class="admin-shell"><div class="animated-content">
  <div class="section-head"><h2>フレカ一覧 <small class="note">${cards.length}件・公開${publicCount}件</small></h2><div class="row"><button class="tiny-btn" id="del" type="button">一括削除</button><button class="btn primary" type="button" id="upload-trigger">＋ フレカを追加</button></div></div>
  <input id="files" type="file" accept="image/*" multiple hidden>
- <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label>
+ <div class="site-b-search-filter-row"><label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label><label class="site-b-dark-check site-b-dark-search"><input type="checkbox" id="dark-only" ${darkOnly?'checked':''}>ダーク化</label></div>
  <div class="admin-card-grid" id="list"></div></div></div>
  <div class="site-b-bulkbar" id="bar"><span id="selCount">0件選択中</span><button type="button" class="tiny-btn" id="cancel">キャンセル</button><button type="button" class="btn danger" id="exec">削除</button></div>
  <div class="overlay hidden" id="adminModal"><img id="adminModalImg" alt="フレカ拡大"><button class="overlay-close" id="adminModalClose" type="button" aria-label="閉じる">×</button></div>
@@ -184,6 +198,7 @@ function render(){
  draw();
  $('#upload-trigger').onclick=openUploader;
  let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
+ $('#dark-only').onchange=e=>{darkOnly=e.target.checked;draw();};
  $('#del').onclick=()=>{deleteMode=!deleteMode;selected.clear();updateBar();draw();};
  $('#cancel').onclick=()=>{deleteMode=false;selected.clear();updateBar();draw();};
  $('#exec').onclick=deleteSelected;$('#logout').onclick=logout;
@@ -191,12 +206,11 @@ function render(){
  updateBar();
 }
 function filteredCards(){
-  if(!q)return cards;
-  const nq=normalizeSearchText(q);
-
-  return cards.filter(x=>
-    normalizeSearchText(`${x.chara} ${x.code}`).includes(nq)
-  );
+ const nq=normalizeSearchText(q);
+ return cards.filter(x=>
+  (!darkOnly||x.darkened===true)&&
+  (!q||normalizeSearchText(`${x.chara} ${x.code}`).includes(nq))
+ );
 }
 
 function draw(){
@@ -449,6 +463,7 @@ function openUploader(){
     <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名" maxlength="120" value="${esc(item.chara)}">
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
    </div>
+   <label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
   const bulkRow=$('#site-b-chara-copy-row'),bulkCheck=$('#site-b-chara-copy');
@@ -475,6 +490,9 @@ function openUploader(){
     else{copyFirstChara=false;bulkCheck.checked=false;}
    }
   });
+  host.querySelectorAll('[data-dark]').forEach(input=>input.onchange=()=>{
+   const item=entries.find(x=>x.key===input.dataset.dark);if(item)item.darkened=input.checked;
+  });
   host.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
    if(preparing||submitting)return;
    const i=entries.findIndex(x=>x.key===button.dataset.remove);
@@ -485,7 +503,7 @@ function openUploader(){
   if(!isImageName(file.name))return false;
   if(!file.size||file.size>MAX_IMAGE)throw Error(`${path}：画像は8MB以下にしてください`);
   entries.push({key:String(++serial),file,path,
-   code:'',chara:'',preview:URL.createObjectURL(file)});
+   code:'',chara:'',darkened:false,preview:URL.createObjectURL(file)});
   return true;
  };
  const addFiles=async fileList=>{
@@ -536,7 +554,7 @@ function openUploader(){
  zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');addFiles(e.dataTransfer.files);};
  submit.onclick=async()=>{
  if(!entries.length||preparing||submitting||siteBUploadInProgress||siteBSaveInProgress)return;
- const work=entries.map(x=>({file:x.file,path:x.path,chara:x.chara.trim(),code:x.code.trim()}));
+ const work=entries.map(x=>({file:x.file,path:x.path,chara:x.chara.trim(),code:x.code.trim(),darkened:!!x.darkened}));
  if(work.some(x=>!x.chara||!x.code)){
   alert('すべての画像にキャラ名とコーデ名を入力してください。');
   return;
@@ -562,8 +580,8 @@ function openUploader(){
     const saved=await post('upload',{filename:item.file.name,mimeType:item.file.type||'image/png',data});
     uploadedId=saved.card?.id||'';
     if(!uploadedId)throw Error('アップロードしたカードIDが取得できませんでした');
-    await post('update',{id:uploadedId,chara:item.chara,code:item.code});
-    created.push({...saved.card,id:uploadedId,chara:item.chara,code:item.code});
+    await post('update',{id:uploadedId,chara:item.chara,code:siteBEncodeCode(item.code,item.darkened)});
+    created.push({...saved.card,id:uploadedId,chara:item.chara,code:item.code,darkened:item.darkened});
     complete++;
    }catch(err){
     if(uploadedId){
@@ -588,7 +606,7 @@ function openEditor(id){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です');return;}
  const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
  $('#editor-host').innerHTML=`<div class="dialog-shade" id="edit-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを編集">
- <div class="row between"><h2>フレカを編集</h2><button type="button" class="tiny-btn" id="edit-close">×</button></div>
+ <div class="row between site-b-edit-header"><h2>フレカを編集</h2><div class="site-b-edit-header-right"><label class="site-b-dark-check"><input id="edit-darkened" type="checkbox" ${x.darkened?'checked':''}>ダーク化</label><button type="button" class="tiny-btn" id="edit-close">×</button></div></div>
  <label class="field">キャラ名<input type="text" class="chara" data-id="${esc(id)}" value="${esc(x.chara||'')}" placeholder="キャラ名" maxlength="120"></label>
  <label class="field">コーデ名<input type="text" class="code" data-id="${esc(id)}" value="${esc(x.code||'')}" placeholder="コーデ名" maxlength="120"></label>
  <div class="dialog-actions"><button type="button" class="btn" id="edit-cancel">キャンセル</button><button type="button" class="btn primary" id="edit-save">保存</button></div>
@@ -630,13 +648,14 @@ async function saveCard(id){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('ほかの保存処理が完了してから操作してください');return;}
  const chara=document.querySelector('.chara[data-id="'+id+'"]')?.value.trim()||'';
  const code=document.querySelector('.code[data-id="'+id+'"]')?.value.trim()||'';
+ const darkened=$('#edit-darkened')?.checked||false;
  const original=cards.find(x=>String(x.id)===String(id));
  if(!original)return;
- if(original.chara===chara&&original.code===code){closeEditor();return;}
+ if(original.chara===chara&&original.code===code&&Boolean(original.darkened)===darkened){closeEditor();return;}
 
  siteBSaveInProgress=true;
  // Start the request, then close immediately; report success only after GAS confirms.
- const saving=post('update',{id,chara,code});
+ const saving=post('update',{id,chara,code:siteBEncodeCode(code,darkened)});
  closeEditor();
  siteBShowSaving('フレカを保存中… このページを閉じないでください');
  try{
@@ -645,11 +664,12 @@ async function saveCard(id){
   if(card){
    card.chara=chara;
    card.code=code;
+   card.darkened=darkened;
    if($('#list')){
     // Avoid rebuilding every image when only a label changed.
     const button=[...document.querySelectorAll('#list [data-edit]')].find(b=>b.dataset.edit===String(id));
     const row=button?.closest('.admin-card');
-    if(!q&&row){
+    if(!q&&!darkOnly&&row){
      const title=row.querySelector('.admin-title'),subtitle=row.querySelector('.admin-sub');
      if(title)title.textContent=card.code||'コーデ名未設定';
      if(subtitle)subtitle.textContent=(card.chara||'キャラ名未設定')+(card.visible===false?' ・ 非公開':'');
@@ -666,6 +686,7 @@ async function saveCard(id){
    const n=document.querySelector('.code[data-id="'+id+'"]');
    if(c)c.value=chara;
    if(n)n.value=code;
+   const dark=$('#edit-darkened');if(dark)dark.checked=darkened;
   }
   alert('保存に失敗しました。入力内容は編集欄に残しています：'+e.message);
  }finally{
