@@ -201,49 +201,157 @@ function draw(){
  });
 }
 function openUploader(){
- $('#editor-host').innerHTML=`<div class="dialog-shade" id="upload-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを追加">
- <div class="row between"><h2>フレカを追加</h2><button class="tiny-btn" type="button" id="upload-close">×</button></div>
- <label class="field">画像を選択<input type="file" id="upload-files" accept="image/*" multiple></label>
- <div id="upload-details"></div>
- <div class="dialog-actions"><button class="btn" type="button" id="upload-cancel">キャンセル</button><button class="btn primary" id="upload-save" type="button" disabled>追加する</button></div>
- </section></div>`;
- $('#upload-close').onclick=closeEditor;$('#upload-cancel').onclick=closeEditor;
- $('#upload-shade').onclick=e=>{if(e.target.id==='upload-shade')closeEditor();};
- const picker=$('#upload-files'),submit=$('#upload-save');
- picker.onchange=()=>{
-  const list=[...picker.files];
-  submit.disabled=!list.length;
-  $('#upload-details').innerHTML=list.map((file,i)=>`<div class="site-b-upload-entry">
-   <strong>${esc(file.name)}</strong>
-   <label class="field">キャラ名<input type="text" data-upload-chara="${i}" maxlength="120" placeholder="自由入力" required></label>
-   <label class="field">コーデ名<input type="text" data-upload-code="${i}" maxlength="120" value="${esc(file.name.replace(/\.[^/.]+$/,''))}" required></label>
-  </div>`).join('');
+ const imageMime={
+  png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',
+  gif:'image/gif',bmp:'image/bmp',avif:'image/avif',
+  heic:'image/heic',heif:'image/heif',tif:'image/tiff',tiff:'image/tiff'
  };
- submit.onclick=async()=>{
-  const files=[...picker.files];if(!files.length)return;
-  const details=files.map((file,i)=>({
-   file,chara:document.querySelector('[data-upload-chara="'+i+'"]').value.trim(),
-   code:document.querySelector('[data-upload-code="'+i+'"]').value.trim()
-  }));
-  if(details.some(x=>!x.chara||!x.code)){alert('キャラ名とコーデ名を入力してください。');return;}
-  submit.disabled=true;picker.disabled=true;
-  let completed=0;
-  try{
-   for(const entry of details){
-    submit.textContent=`アップロード中… ${completed+1}/${details.length}`;
-    const data=await readDataURL(entry.file);
-    const uploaded=await post('upload',{filename:entry.file.name,mimeType:entry.file.type||'image/png',data});
-    const id=uploaded.card?.id;
-    if(!id)throw Error('アップロードしたカードのIDを取得できませんでした');
-    await post('update',{id,chara:entry.chara,code:entry.code});
-    completed++;
-   }
-   cards=(await post('adminList')).cards||cards;
-   render();toast(completed+'件追加しました');
-  }catch(e){
-   try{cards=(await post('adminList')).cards||cards;render();}catch(_){}
-   alert('アップロードに失敗しました（'+completed+'/'+details.length+'件完了）: '+e.message);
+ const MAX_IMAGE=8*1024*1024,MAX_ZIP=150*1024*1024,MAX_UNPACKED=180*1024*1024;
+ const entries=[];let serial=0,preparing=false,submitting=false,closed=false;
+ const getExt=name=>String(name).split('.').pop().toLowerCase();
+ const isImageName=name=>Object.prototype.hasOwnProperty.call(imageMime,getExt(name));
+ const displayName=path=>String(path).replace(/\\/g,'/').split('/').pop();
+ const notify=msg=>{const el=$('#upload-status');if(el)el.textContent=msg;};
+ const revoke=item=>{if(item.preview)URL.revokeObjectURL(item.preview);};
+ const release=()=>{entries.forEach(revoke);entries.length=0;};
+ const dismiss=()=>{
+  if(submitting)return;
+  closed=true;release();closeEditor();
+ };
+ const ensureFflate=()=>{
+  if(window.fflate?.unzipSync)return Promise.resolve(window.fflate);
+  if(!window.__siteBZipLoader){
+   window.__siteBZipLoader=new Promise((resolve,reject)=>{
+    const tag=document.createElement('script');
+    tag.src='https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js';
+    tag.async=true;tag.onload=()=>window.fflate?.unzipSync?resolve(window.fflate):reject(Error('ZIPの解凍機能を読み込めませんでした'));
+    tag.onerror=()=>reject(Error('ZIPの解凍機能を読み込めませんでした。ネットワーク接続を確認してください'));
+    document.head.appendChild(tag);
+   }).catch(e=>{window.__siteBZipLoader=null;throw e;});
   }
+  return window.__siteBZipLoader;
+ };
+ $('#editor-host').innerHTML=`<div class="dialog-shade" id="upload-shade">
+ <section class="dialog card-entry-dialog" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+  <div class="row between dialog-heading">
+   <h2 id="upload-title">フレカを追加</h2>
+   <button class="dialog-x" id="upload-close" type="button" aria-label="閉じる">×</button>
+  </div>
+  <div class="card-upload-zone" id="upload-zone" tabindex="0" role="button" aria-label="画像またはZIPを選択">
+   <span class="upload-symbol">＋</span><strong>画像・ZIPを選択</strong>
+   <span class="upload-hint">またはここにドロップ</span>
+  </div>
+  <input id="upload-files" type="file" accept="image/*,.zip,application/zip,application/x-zip-compressed" multiple hidden>
+  <p class="site-b-upload-status" id="upload-status" role="status" aria-live="polite">ZIP内の画像もまとめて追加できます。</p>
+  <div id="upload-details" class="upload-entries"></div>
+  <div class="dialog-actions hidden" id="upload-actions">
+   <button class="btn primary" id="upload-save" type="button">追加する</button>
+  </div>
+ </section></div>`;
+ const zone=$('#upload-zone'),picker=$('#upload-files'),submit=$('#upload-save'),actions=$('#upload-actions');
+ const paint=()=>{
+  const host=$('#upload-details');if(!host)return;
+  host.innerHTML=entries.map((item,i)=>`<div class="upload-entry" data-entry="${item.key}">
+   <div class="upload-thumb"><img src="${esc(item.preview)}" alt="画像プレビュー" loading="lazy"></div>
+   <div class="upload-fields">
+    <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
+    <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名（自由入力）" maxlength="120" value="${esc(item.chara)}">
+   </div>
+   <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
+  </div>`).join('');
+  actions.classList.toggle('hidden',entries.length===0);
+  submit.textContent=`${entries.length}件を追加する`;
+  host.querySelectorAll('[data-code]').forEach(input=>input.oninput=()=>{
+   const item=entries.find(x=>x.key===input.dataset.code);if(item)item.code=input.value;
+  });
+  host.querySelectorAll('[data-chara]').forEach(input=>input.oninput=()=>{
+   const item=entries.find(x=>x.key===input.dataset.chara);if(item)item.chara=input.value;
+  });
+  host.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
+   if(preparing||submitting)return;
+   const i=entries.findIndex(x=>x.key===button.dataset.remove);
+   if(i>=0){revoke(entries[i]);entries.splice(i,1);paint();notify(`${entries.length}件の画像を選択中`);}
+  });
+ };
+ const addEntry=(file,path)=>{
+  if(!isImageName(file.name))return false;
+  if(!file.size||file.size>MAX_IMAGE)throw Error(`${path}：画像は8MB以下にしてください`);
+  entries.push({key:String(++serial),file,path,
+   code:displayName(path).replace(/\.[^.]+$/,''),chara:'',preview:URL.createObjectURL(file)});
+  return true;
+ };
+ const addFiles=async fileList=>{
+  const list=[...fileList];if(!list.length||preparing||submitting||closed)return;
+  preparing=true;picker.disabled=true;zone.classList.add('upload-busy');submit.disabled=true;
+  let added=0,skipped=0;const errors=[];
+  try{
+   for(const file of list){
+    if(closed)break;
+    if(getExt(file.name)!=='zip'){
+     try{if(addEntry(file,file.name))added++;else skipped++;}catch(e){errors.push(e.message);}
+     continue;
+    }
+    notify(`ZIPを展開中：${file.name}`);
+    try{
+     if(file.size>MAX_ZIP)throw Error('ZIPは150MB以下にしてください');
+     const lib=await ensureFflate();
+     const bytes=new Uint8Array(await file.arrayBuffer());
+     let unpacked=0;
+     const extracted=lib.unzipSync(bytes,{filter:meta=>{
+      const name=meta.name.replace(/\\/g,'/');
+      if(name.startsWith('__MACOSX/')||name.split('/').some(p=>p.startsWith('._')))return false;
+      if(!isImageName(name)){skipped++;return false;}
+      if(meta.originalSize>MAX_IMAGE){errors.push(`${name}：画像は8MB以下にしてください`);return false;}
+      if(unpacked+meta.originalSize>MAX_UNPACKED)throw Error('ZIPの展開後サイズが上限を超えています');
+      unpacked+=meta.originalSize;return true;
+     }});
+     for(const [name,content] of Object.entries(extracted)){
+      if(closed)break;
+      const image=new File([content],displayName(name),{type:imageMime[getExt(name)]});
+      try{if(addEntry(image,name))added++;else skipped++;}catch(e){errors.push(e.message);}
+     }
+    }catch(e){errors.push(`${file.name}：${e.message}`);}
+   }
+   if(!closed){paint();notify(`${entries.length}件の画像を選択中${skipped?`（画像以外${skipped}件を除外）`:''}${errors.length?`・処理できなかったファイル${errors.length}件`:''}`);
+    if(errors.length)alert(errors.slice(0,6).join('\n')+(errors.length>6?`\nほか${errors.length-6}件`:''));}
+  }finally{
+   preparing=false;picker.disabled=false;zone.classList.remove('upload-busy');submit.disabled=false;
+  }
+ };
+ $('#upload-close').onclick=dismiss;
+ $('#upload-shade').onclick=e=>{if(e.target.id==='upload-shade')dismiss();};
+ zone.onclick=()=>picker.click();
+ zone.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();picker.click();}};
+ picker.onchange=e=>{addFiles(e.target.files);e.target.value='';};
+ zone.ondragover=e=>{e.preventDefault();zone.classList.add('dragging');};
+ zone.ondragleave=()=>zone.classList.remove('dragging');
+ zone.ondrop=e=>{e.preventDefault();zone.classList.remove('dragging');addFiles(e.dataTransfer.files);};
+ submit.onclick=async()=>{
+  if(!entries.length||preparing||submitting)return;
+  const work=entries.map(x=>({...x,chara:x.chara.trim(),code:x.code.trim()}));
+  if(work.some(x=>!x.chara||!x.code)){alert('すべての画像にキャラ名とコーデ名を入力してください。');return;}
+  submitting=true;picker.disabled=true;submit.disabled=true;zone.classList.add('upload-busy');
+  let complete=0;const errors=[];
+  for(let i=0;i<work.length;i++){
+   const item=work[i];let uploadedId='';
+   notify(`アップロード中… ${i+1}/${work.length}件（完了${complete}件）`);
+   try{
+    const data=await readDataURL(item.file);
+    const saved=await post('upload',{filename:item.file.name,mimeType:item.file.type||'image/png',data});
+    uploadedId=saved.card?.id||'';
+    if(!uploadedId)throw Error('アップロードしたカードIDが取得できませんでした');
+    await post('update',{id:uploadedId,chara:item.chara,code:item.code});
+    complete++;
+   }catch(err){
+    // Avoid leaving blank entries if the second (metadata) request failed.
+    if(uploadedId){try{await post('delete',{id:uploadedId});}catch(_){errors.push(`${item.path}：登録情報の保存に失敗し、未完成のカードが残っている可能性があります`);}}
+    errors.push(`${item.path}：${err.message}`);
+   }
+  }
+  submitting=false;release();
+  try{cards=(await post('adminList')).cards||cards;render();}catch(e){closeEditor();alert('登録後の一覧更新に失敗しました。ページを再読み込みしてください：'+e.message);}
+  toast(`${complete}/${work.length}件を登録しました`);
+  if(errors.length)alert(`登録できなかった画像があります。\n${errors.slice(0,5).join('\n')}${errors.length>5?`\nほか${errors.length-5}件`:''}`);
  };
 }
 function openEditor(id){
