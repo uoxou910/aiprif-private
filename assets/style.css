@@ -819,3 +819,40 @@ body[data-page="edit"] #edit-save {min-width:86px;}
 body[data-page="edit"] .site-b-upload-entry {padding:14px 0;border-bottom:1px solid var(--line);}
 body[data-page="edit"] .site-b-upload-entry strong {display:block;font-size:12px;overflow-wrap:anywhere;}
 body[data-page="edit"] .site-b-upload-entry .field {margin:10px 0;}
+
+/* Site B: Site D-style bulk card upload dialog, including ZIP archives. */
+body[data-page="edit"] .dialog-shade .dialog.card-entry-dialog {
+  width:min(620px,100%);
+}
+body[data-page="edit"] .card-entry-dialog .dialog-heading {
+  margin-bottom:24px;
+}
+body[data-page="edit"] .site-b-upload-status {
+  min-height:19px;
+  margin:12px 0 2px;
+  color:#88818f;
+  font-size:11px;
+  line-height:1.5;
+}
+body[data-page="edit"] .card-entry-dialog .upload-entries {
+  margin-top:8px;
+  max-height:min(50vh,480px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+body[data-page="edit"] .card-entry-dialog .upload-fields input {
+  font-size:16px;
+}
+body[data-page="edit"] .card-entry-dialog .dialog-actions {
+  justify-content:flex-end;
+  padding-top:12px;
+  margin-top:10px;
+}
+@media(max-width:699px) {
+  body[data-page="edit"] .dialog-shade .dialog.card-entry-dialog {
+    padding:22px 18px;
+  }
+  body[data-page="edit"] .card-entry-dialog .upload-entries {
+    max-height:min(50dvh,430px);
+  }
+}
