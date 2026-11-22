@@ -1283,3 +1283,76 @@ body[data-page="view"] .infinite-loader-dot {
 @media (prefers-reduced-motion:reduce) {
  body[data-page="view"] .infinite-loader-dot {animation:none;}
 }
+
+/* Site B public four-digit PIN screen. Activated only after server enforcement. */
+body.site-b-pin-locked {overflow:hidden;}
+body.site-b-pin-locked #app {visibility:hidden;pointer-events:none;}
+.site-b-pin-screen {
+ position:fixed;inset:0;z-index:1000;
+ min-height:100dvh;box-sizing:border-box;
+ display:flex;align-items:center;justify-content:center;
+ overflow-y:auto;overscroll-behavior:contain;
+ padding:24px 16px;
+ color:#fff;
+ background:
+   radial-gradient(ellipse 85% 55% at 18% 8%,rgba(116,145,202,.31),transparent 78%),
+   radial-gradient(ellipse 85% 65% at 94% 100%,rgba(194,136,174,.22),transparent 75%),
+   linear-gradient(165deg,#263955 0%,#141f38 54%,#11172a 100%);
+ font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+}
+.site-b-pin-panel {
+ box-sizing:border-box;display:flex;flex-direction:column;align-items:center;
+ width:min(100%,350px);max-width:100%;
+ margin:auto;padding:20px 0 10px;
+ text-align:center;
+}
+.site-b-pin-lock-icon {width:28px;height:28px;margin:0 0 19px;color:rgba(255,255,255,.94)}
+.site-b-pin-lock-icon svg {width:100%;height:100%}
+.site-b-pin-title {margin:0;font-size:22px;line-height:1.4;letter-spacing:.06em;font-weight:600;color:#fff}
+.site-b-pin-caption {margin:16px 0 24px;color:rgba(255,255,255,.88);font-size:14px;font-weight:400}
+.site-b-pin-dots {display:flex;align-items:center;justify-content:center;gap:19px;min-height:16px}
+.site-b-pin-dot {
+ width:12px;height:12px;box-sizing:border-box;border:1.5px solid rgba(255,255,255,.88);
+ border-radius:50%;background:transparent;transition:background .12s ease,transform .12s ease;
+}
+.site-b-pin-dot.filled {background:#fff;transform:scale(1.08)}
+.site-b-pin-message {display:flex;align-items:center;justify-content:center;min-height:36px;max-width:100%;margin:11px 0 6px;font-size:12px;line-height:1.45;color:rgba(255,255,255,.87);word-break:break-word}
+.site-b-pin-message.is-error {color:#ffbfc8}
+.site-b-pin-keypad {
+ display:grid;grid-template-columns:repeat(3,72px);grid-auto-rows:72px;
+ justify-content:center;gap:13px 19px;
+}
+.site-b-pin-key {
+ appearance:none;border:1px solid rgba(255,255,255,.06);
+ width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.17);
+ color:#fff;display:grid;place-items:center;
+ font-family:inherit;font-weight:350;font-size:30px;line-height:1;
+ cursor:pointer;user-select:none;-webkit-user-select:none;
+ -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+ transition:background .12s ease,transform .12s ease;
+}
+.site-b-pin-key:hover{background:rgba(255,255,255,.25)}
+.site-b-pin-key:active{background:rgba(255,255,255,.34);transform:scale(.95)}
+.site-b-pin-key:focus-visible,.site-b-pin-backspace:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.site-b-pin-zero {grid-column:2;grid-row:4}
+.site-b-pin-backspace {
+ appearance:none;display:grid;place-items:center;grid-column:3;grid-row:4;
+ border:0;background:transparent;color:#fff;cursor:pointer;
+ border-radius:50%;width:72px;height:72px;
+ -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.site-b-pin-backspace svg{width:24px;height:24px}
+.site-b-pin-backspace:active{background:rgba(255,255,255,.12)}
+.site-b-pin-hint {margin:22px 0 0;color:rgba(255,255,255,.61);font-size:11px}
+@media(max-height:640px){
+ .site-b-pin-screen{align-items:flex-start}
+ .site-b-pin-panel{padding:8px 0}
+ .site-b-pin-lock-icon{margin-bottom:10px}
+ .site-b-pin-caption{margin:9px 0 14px}
+ .site-b-pin-keypad{grid-template-columns:repeat(3,62px);grid-auto-rows:62px;gap:8px 16px}
+ .site-b-pin-key,.site-b-pin-backspace{width:62px;height:62px}
+ .site-b-pin-hint{margin-top:12px}
+}
+@media(prefers-reduced-motion:reduce){
+ .site-b-pin-key,.site-b-pin-dot{transition:none}
+}
