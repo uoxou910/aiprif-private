@@ -960,3 +960,57 @@ body[data-page="edit"] .card-entry-dialog .card-chara-bulk input[type="checkbox"
 @media (max-width:699px) {
  body[data-page="edit"] .card-entry-dialog .card-chara-bulk {font-size:13px;}
 }
+
+/* Site B darkened-card tagging and admin filter. */
+body[data-page="edit"] .site-b-search-filter-row {
+ display:flex;
+ align-items:center;
+ gap:14px;
+ width:100%;
+ max-width:870px;
+}
+body[data-page="edit"] .site-b-search-filter-row > .search {
+ flex:1 1 auto;
+ min-width:0;
+ width:100%;
+}
+body[data-page="edit"] .site-b-dark-check {
+ display:inline-flex;
+ align-items:center;
+ justify-content:flex-end;
+ gap:7px;
+ flex-shrink:0;
+ color:#595263;
+ font-size:12px;
+ line-height:1.45;
+ white-space:nowrap;
+ cursor:pointer;
+ user-select:none;
+}
+body[data-page="edit"] .site-b-dark-check input[type="checkbox"] {
+ appearance:auto;
+ flex:0 0 auto;
+ width:16px;
+ height:16px;
+ margin:0;
+ accent-color:#746c83;
+ cursor:pointer;
+}
+body[data-page="edit"] .site-b-dark-search {
+ padding:10px 0;
+}
+body[data-page="edit"] .site-b-edit-header-right {
+ display:flex;
+ align-items:center;
+ gap:16px;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-dark {
+ align-self:center;
+}
+@media (max-width:699px) {
+ body[data-page="edit"] .site-b-search-filter-row {gap:10px;}
+ body[data-page="edit"] .site-b-dark-check {gap:5px;font-size:12px;}
+ body[data-page="edit"] .site-b-edit-header-right {gap:9px;}
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-dark {font-size:11px;}
+ body[data-page="edit"] .card-entry-dialog .upload-entry {gap:7px;}
+}
