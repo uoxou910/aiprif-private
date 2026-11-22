@@ -1,7 +1,7 @@
 (function(){
 const C=window.SITE_D_CONFIG||{};
 let cards=[],q='',darkOnly=false,mikukoOnly=false,bulkSelectMode=false,selected=new Set(),bulkDarkTouched=false,
-    adminPassword=sessionStorage.getItem('freca_admin_password')||'';
+    adminPassword='';
 let siteBUploadInProgress=false;
 let siteBSaveInProgress=false;
 function siteBShowSaving(message){
@@ -118,17 +118,9 @@ async function init(){
     return;
   }
 
-  if(adminPassword){
-    try{
-      await post('auth');
-      await load();
-      return;
-    }catch(e){
-      sessionStorage.removeItem('freca_admin_password');
-      adminPassword='';
-    }
-  }
-
+  // Always require the GAS-backed admin password on entry, even after a
+  // previous login in the same tab. Clear credentials cached by older builds.
+  sessionStorage.removeItem('freca_admin_password');
   renderLogin();
 }
 
@@ -155,10 +147,11 @@ async function login(){
   adminPassword=p;
   try{
     await post('auth');
-    sessionStorage.setItem('freca_admin_password',p);
+    // Keep the password only in memory for the current open admin page.
     await load();
   }catch(e){
     adminPassword='';
+    sessionStorage.removeItem('freca_admin_password');
     renderLogin('パスワードが違います。');
   }
 }
