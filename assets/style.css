@@ -1202,3 +1202,19 @@ body[data-page="view"] .site-b-public-filter-check input[type="checkbox"] {
  }
  body[data-page="view"] .site-b-public-filter-check {min-height:30px;}
 }
+
+/* Six-column desktop card management; retain the continuous scrolling list. */
+@media (min-width:1100px) {
+ body[data-page="edit"] .admin-card-grid {
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  column-gap:16px;
+  row-gap:28px;
+ }
+ body[data-page="edit"] .admin-card-body .row {
+  gap:3px;
+ }
+ body[data-page="edit"] .admin-card-body .tiny-btn {
+  padding:6px 8px;
+  font-size:11px;
+ }
+}
