@@ -160,7 +160,7 @@ function render(){
  menu.onclick=()=>toggle(!panel.classList.contains('is-open'));
  scrim.onclick=()=>toggle(false);close.onclick=()=>toggle(false);$('#menu-cards').onclick=()=>toggle(false);
  window.addEventListener('resize',()=>{if(panel.isConnected&&panel.classList.contains('is-open'))positionClose();});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggle(false);closePreview();closeEditor();}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggle(false);closePreview();if(!closeSiteBUploadZoom())closeEditor();}});
  draw();
  $('#upload-trigger').onclick=openUploader;
  let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
@@ -208,6 +208,13 @@ function draw(){
   const id=b.dataset.select;selected.has(id)?selected.delete(id):selected.add(id);updateBar();draw();
  });
 }
+function closeSiteBUploadZoom(){
+ const zoom=document.querySelector('#site-b-upload-zoom');
+ if(!zoom || zoom.classList.contains('hidden'))return false;
+ zoom.classList.add('hidden');
+ zoom.querySelector('img')?.removeAttribute('src');
+ return true;
+}
 function openUploader(){
  const imageMime={
   png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',
@@ -220,7 +227,7 @@ function openUploader(){
  const getExt=name=>String(name).split('.').pop().toLowerCase();
  const isImageName=name=>Object.prototype.hasOwnProperty.call(imageMime,getExt(name));
  const displayName=path=>String(path).replace(/\\/g,'/').split('/').pop();
- const notify=msg=>{const el=$('#upload-status');if(el)el.textContent=msg;};
+ const notify=msg=>{const el=$('#upload-status');if(el){el.textContent=msg;el.hidden=!msg;}};
  const revoke=item=>{if(item.preview)URL.revokeObjectURL(item.preview);};
  const release=()=>{entries.forEach(revoke);entries.length=0;};
  const dismiss=()=>{
@@ -251,17 +258,24 @@ function openUploader(){
    <span class="upload-hint">またはここにドロップ</span>
   </div>
   <input id="upload-files" type="file" accept="image/*,.zip,application/zip,application/x-zip-compressed" multiple hidden>
-  <p class="site-b-upload-status" id="upload-status" role="status" aria-live="polite">ZIP内の画像もまとめて追加できます。</p>
+  <p class="site-b-upload-status" id="upload-status" role="status" aria-live="polite" hidden></p>
   <div id="upload-details" class="upload-entries"></div>
   <div class="dialog-actions hidden" id="upload-actions">
    <button class="btn primary" id="upload-save" type="button">追加する</button>
   </div>
- </section></div>`;
+ </section></div>
+ <div class="overlay hidden" id="site-b-upload-zoom" role="dialog" aria-modal="true" aria-label="追加する画像の拡大">
+   <img id="site-b-upload-zoom-image" alt="追加する画像の拡大">
+   <button type="button" class="overlay-close" id="site-b-upload-zoom-close" aria-label="閉じる">×</button>
+ </div>`;
+ const zoom=$('#site-b-upload-zoom');
+ $('#site-b-upload-zoom-close').onclick=closeSiteBUploadZoom;
+ zoom.onclick=e=>{if(e.target===zoom)closeSiteBUploadZoom();};
  const zone=$('#upload-zone'),picker=$('#upload-files'),submit=$('#upload-save'),actions=$('#upload-actions');
  const paint=()=>{
   const host=$('#upload-details');if(!host)return;
   host.innerHTML=entries.map((item,i)=>`<div class="upload-entry" data-entry="${item.key}">
-   <div class="upload-thumb"><img src="${esc(item.preview)}" alt="画像プレビュー" loading="lazy"></div>
+   <button type="button" class="upload-thumb site-b-upload-zoom-trigger" data-zoom="${item.key}" aria-label="${i+1}件目の画像を拡大"><img src="${esc(item.preview)}" alt="画像プレビュー" loading="lazy"></button>
    <div class="upload-fields">
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
     <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名（自由入力）" maxlength="120" value="${esc(item.chara)}">
@@ -270,6 +284,12 @@ function openUploader(){
   </div>`).join('');
   actions.classList.toggle('hidden',entries.length===0);
   submit.textContent=`${entries.length}件を追加する`;
+  host.querySelectorAll('[data-zoom]').forEach(button=>button.onclick=()=>{
+   const item=entries.find(x=>x.key===button.dataset.zoom);
+   if(!item)return;
+   $('#site-b-upload-zoom-image').src=item.preview;
+   zoom.classList.remove('hidden');
+  });
   host.querySelectorAll('[data-code]').forEach(input=>input.oninput=()=>{
    const item=entries.find(x=>x.key===input.dataset.code);if(item)item.code=input.value;
   });
@@ -286,7 +306,7 @@ function openUploader(){
   if(!isImageName(file.name))return false;
   if(!file.size||file.size>MAX_IMAGE)throw Error(`${path}：画像は8MB以下にしてください`);
   entries.push({key:String(++serial),file,path,
-   code:displayName(path).replace(/\.[^.]+$/,''),chara:'',preview:URL.createObjectURL(file)});
+   code:'',chara:'',preview:URL.createObjectURL(file)});
   return true;
  };
  const addFiles=async fileList=>{
