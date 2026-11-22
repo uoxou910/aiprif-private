@@ -814,3 +814,8 @@ body[data-page="edit"] #edit-save {min-width:86px;}
  body[data-page="edit"] .section-head .row {justify-content:flex-end;width:100%;}
  body[data-page="edit"] .section-head .btn {min-height:39px;}
 }
+
+/* File-specific free-text fields in Site B's image upload dialog. */
+body[data-page="edit"] .site-b-upload-entry {padding:14px 0;border-bottom:1px solid var(--line);}
+body[data-page="edit"] .site-b-upload-entry strong {display:block;font-size:12px;overflow-wrap:anywhere;}
+body[data-page="edit"] .site-b-upload-entry .field {margin:10px 0;}
