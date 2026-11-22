@@ -154,8 +154,7 @@ function render(){
  window.addEventListener('resize',()=>{if(panel.isConnected&&panel.classList.contains('is-open'))positionClose();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggle(false);closePreview();closeEditor();}});
  draw();
- $('#upload-trigger').onclick=()=>$('#files').click();
- $('#files').onchange=e=>addFiles(e.target.files);
+ $('#upload-trigger').onclick=openUploader;
  let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
  $('#del').onclick=()=>{deleteMode=!deleteMode;selected.clear();updateBar();draw();};
  $('#cancel').onclick=()=>{deleteMode=false;selected.clear();updateBar();draw();};
@@ -200,6 +199,52 @@ function draw(){
  document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{
   const id=b.dataset.select;selected.has(id)?selected.delete(id):selected.add(id);updateBar();draw();
  });
+}
+function openUploader(){
+ $('#editor-host').innerHTML=`<div class="dialog-shade" id="upload-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを追加">
+ <div class="row between"><h2>フレカを追加</h2><button class="tiny-btn" type="button" id="upload-close">×</button></div>
+ <label class="field">画像を選択<input type="file" id="upload-files" accept="image/*" multiple></label>
+ <div id="upload-details"></div>
+ <div class="dialog-actions"><button class="btn" type="button" id="upload-cancel">キャンセル</button><button class="btn primary" id="upload-save" type="button" disabled>追加する</button></div>
+ </section></div>`;
+ $('#upload-close').onclick=closeEditor;$('#upload-cancel').onclick=closeEditor;
+ $('#upload-shade').onclick=e=>{if(e.target.id==='upload-shade')closeEditor();};
+ const picker=$('#upload-files'),submit=$('#upload-save');
+ picker.onchange=()=>{
+  const list=[...picker.files];
+  submit.disabled=!list.length;
+  $('#upload-details').innerHTML=list.map((file,i)=>`<div class="site-b-upload-entry">
+   <strong>${esc(file.name)}</strong>
+   <label class="field">キャラ名<input type="text" data-upload-chara="${i}" maxlength="120" placeholder="自由入力" required></label>
+   <label class="field">コーデ名<input type="text" data-upload-code="${i}" maxlength="120" value="${esc(file.name.replace(/\.[^/.]+$/,''))}" required></label>
+  </div>`).join('');
+ };
+ submit.onclick=async()=>{
+  const files=[...picker.files];if(!files.length)return;
+  const details=files.map((file,i)=>({
+   file,chara:document.querySelector('[data-upload-chara="'+i+'"]').value.trim(),
+   code:document.querySelector('[data-upload-code="'+i+'"]').value.trim()
+  }));
+  if(details.some(x=>!x.chara||!x.code)){alert('キャラ名とコーデ名を入力してください。');return;}
+  submit.disabled=true;picker.disabled=true;
+  let completed=0;
+  try{
+   for(const entry of details){
+    submit.textContent=`アップロード中… ${completed+1}/${details.length}`;
+    const data=await readDataURL(entry.file);
+    const uploaded=await post('upload',{filename:entry.file.name,mimeType:entry.file.type||'image/png',data});
+    const id=uploaded.card?.id;
+    if(!id)throw Error('アップロードしたカードのIDを取得できませんでした');
+    await post('update',{id,chara:entry.chara,code:entry.code});
+    completed++;
+   }
+   cards=(await post('adminList')).cards||cards;
+   render();toast(completed+'件追加しました');
+  }catch(e){
+   try{cards=(await post('adminList')).cards||cards;render();}catch(_){}
+   alert('アップロードに失敗しました（'+completed+'/'+details.length+'件完了）: '+e.message);
+  }
+ };
 }
 function openEditor(id){
  const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
