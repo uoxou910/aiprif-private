@@ -1,5 +1,5 @@
 (function(){
-const C=window.FRECA_CONFIG||{};
+const C=window.SITE_D_CONFIG||{};
 let cards=[],q='',deleteMode=false,selected=new Set(),
     adminPassword=sessionStorage.getItem('freca_admin_password')||'';
 
