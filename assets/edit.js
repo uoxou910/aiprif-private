@@ -201,22 +201,27 @@ function draw(){
   const id=b.dataset.select;selected.has(id)?selected.delete(id):selected.add(id);updateBar();draw();
  });
 }
+function openEditor(id){
+ const x=cards.find(v=>String(v.id)===String(id));if(!x)return;
+ $('#editor-host').innerHTML=`<div class="dialog-shade" id="edit-shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="フレカを編集">
+ <div class="row between"><h2>フレカを編集</h2><button type="button" class="tiny-btn" id="edit-close">×</button></div>
+ <label class="field">キャラ名<input type="text" class="chara" data-id="${esc(id)}" value="${esc(x.chara||'')}" placeholder="自由入力" maxlength="120"></label>
+ <label class="field">コーデ名<input type="text" class="code" data-id="${esc(id)}" value="${esc(x.code||'')}" placeholder="コーデ名" maxlength="120"></label>
+ <div class="dialog-actions"><button type="button" class="btn" id="edit-cancel">キャンセル</button><button type="button" class="btn primary" id="edit-save">保存</button></div>
+ </section></div>`;
+ $('#edit-close').onclick=closeEditor;$('#edit-cancel').onclick=closeEditor;
+ $('#edit-shade').onclick=e=>{if(e.target.id==='edit-shade')closeEditor();};
+ $('#edit-save').onclick=()=>saveCard(id);
+}
+function closeEditor(){const host=$('#editor-host');if(host)host.innerHTML='';}
 function openPreview(id){
-  const x=cards.find(x=>String(x.id)===String(id));
-  if(!x)return;
-
-  $('#adminModalImg').src=x.image_url;
-  $('#adminModal').classList.add('open');
+ const x=cards.find(v=>String(v.id)===String(id));if(!x?.image_url)return;
+ $('#adminModalImg').src=x.image_url;$('#adminModal').classList.remove('hidden');
 }
-
 function closePreview(){
-  const modal=$('#adminModal');
-  if(!modal)return;
-  modal.classList.remove('open');
-  const img=$('#adminModalImg');
-  if(img)img.src='';
+ const modal=$('#adminModal');if(!modal)return;
+ modal.classList.add('hidden');const img=$('#adminModalImg');if(img)img.removeAttribute('src');
 }
-
 async function toggleVisibility(id,currentVisible){
   const next=!currentVisible;
   const x=cards.find(x=>String(x.id)===String(id));
@@ -251,7 +256,7 @@ async function saveCard(id){
       x.code=code;
     }
 
-    toast('保存しました');
+    closeEditor();draw();toast('保存しました');
   }catch(e){
     alert('保存に失敗しました：'+e.message);
   }
@@ -323,11 +328,8 @@ async function remove(ids){
 }
 
 function updateBar(){
-  const b=$('#bar');
-  if(!b)return;
-
-  b.classList.toggle('show',deleteMode);
-  $('#selCount').textContent=selected.size+'件選択中';
+ const bar=$('#bar');if(!bar)return;
+ bar.classList.toggle('show',deleteMode);$('#selCount').textContent=selected.size+'件選択中';
 }
 
 init();
