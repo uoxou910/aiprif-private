@@ -56,13 +56,21 @@ async function api(action,payload={},token=''){
   return pinRequest_('pinLogin',{pin});
  }
  if(action!=='public')throw Error('サイトBの管理操作は専用APIを利用します');
- if(pinEnabled&&(!token||typeof token!=='string'))throw Error('PIN_REQUIRED');
+ // A signed-in administrator may read the public list through the existing
+ // password-checked adminList endpoint, without knowing the separate public PIN.
+ // Never trust an unsigned URL flag or show data before server verification.
+ const adminPassword=pinEnabled&&!token
+  ?sessionStorage.getItem('freca_admin_password')||''
+  :'';
+ if(pinEnabled&&!token&&!adminPassword)throw Error('PIN_REQUIRED');
  const url=new URL(window.SITE_D_CONFIG.gasUrl);
  let result;
  if(pinEnabled){
-  // Public cards are obtained only with a server-verified session token.
-  // No GET list fallback is allowed when PIN protection is active.
-  result=await pinRequest_('pinList',{token});
+  // Every route is authenticated on GAS: either pinList with a token or
+  // adminList with the existing administrator password. No public GET fallback.
+  result=token
+   ?await pinRequest_('pinList',{token})
+   :await pinRequest_('adminList',{password:adminPassword});
  }else{
   url.searchParams.set('action','list');
   url.searchParams.set('_ts',String(Date.now()));
