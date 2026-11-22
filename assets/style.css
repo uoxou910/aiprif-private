@@ -1055,3 +1055,96 @@ body[data-page="edit"] .site-b-edit-header-right {
   gap:12px;
  }
 }
+
+/* Site B: header bulk selection with persistent add action. */
+body[data-page="edit"] .site-b-admin-header-actions {
+ gap:9px;
+ flex-shrink:0;
+}
+body[data-page="edit"] .site-b-header-bulk {
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ flex:0 0 auto;
+ min-height:40px;
+ padding:9px 14px;
+ background:var(--surface-soft);
+ color:#514a59;
+ border:0;
+ border-radius:22px;
+ font-size:12px;
+ font-weight:600;
+ white-space:nowrap;
+}
+body[data-page="edit"] .site-b-header-bulk:hover,
+body[data-page="edit"] .site-b-header-bulk.is-active {
+ background:var(--theme-soft);
+ color:#302a35;
+}
+body[data-page="edit"] .site-b-header-add {
+ flex:0 0 auto;
+ white-space:nowrap;
+ font-size:12px;
+ min-height:40px;
+}
+body[data-page="edit"] .site-b-card-selected .admin-image {
+ box-shadow:0 0 0 3px #766c84;
+}
+body[data-page="edit"] .site-b-bulkbar {
+ flex-wrap:wrap;
+ min-width:0;
+ width:max-content;
+ max-width:calc(100vw - 24px);
+ padding:12px 16px;
+ row-gap:8px;
+}
+body[data-page="edit"] .site-b-bulkbar .btn {
+ min-height:36px;
+ padding:7px 13px;
+}
+body[data-page="edit"] .site-b-bulkbar .tiny-btn {
+ padding:7px 9px;
+}
+body[data-page="edit"] .site-b-bulk-dark-check {
+ display:inline-flex;
+ align-items:center;
+ gap:7px;
+ color:#514a59;
+ font-size:12px;
+ white-space:nowrap;
+ cursor:pointer;
+}
+body[data-page="edit"] .site-b-bulk-dark-check input[type="checkbox"] {
+ width:17px;
+ height:17px;
+ margin:0;
+ flex-shrink:0;
+ accent-color:#746c83;
+ cursor:pointer;
+}
+body[data-page="edit"] .site-b-bulkbar #selCount {
+ font-weight:600;
+ font-variant-numeric:tabular-nums;
+ white-space:nowrap;
+}
+@media (max-width:699px) {
+ body[data-page="edit"] .site-b-admin-header-actions {gap:6px;}
+ body[data-page="edit"] .site-b-header-bulk {font-size:11px;padding:8px 11px;min-height:38px;}
+ body[data-page="edit"] .site-b-header-add {font-size:11px;padding:8px 11px;min-height:38px;}
+ body[data-page="edit"] .site-b-bulkbar {justify-content:center;padding:10px 12px;}
+ body[data-page="edit"] .admin-shell {padding-bottom:128px;}
+}
+@media (max-width:540px) {
+ body[data-page="edit"] .header-inner {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:0;
+  padding:9px 12px 10px;
+ }
+ body[data-page="edit"] .header-inner > .app-title {font-size:16px;}
+ body[data-page="edit"] .site-b-admin-header-actions {
+  justify-content:flex-end;
+  width:100%;
+ }
+}
