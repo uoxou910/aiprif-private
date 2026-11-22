@@ -283,9 +283,9 @@ function setupSiteBInputHistory(extra=[]){
   if(!input?.isConnected)return hide();
   input.value=value;
   input.dispatchEvent(new Event('input',{bubbles:true}));
-  hide();
   input.focus({preventScroll:true});
   input.setSelectionRange(input.value.length,input.value.length);
+  hide();
  };
  const show=input=>{
   current=input;
