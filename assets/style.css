@@ -1294,10 +1294,7 @@ body.site-b-pin-locked #app {visibility:hidden;pointer-events:none;}
  overflow-y:auto;overscroll-behavior:contain;
  padding:24px 16px;
  color:#473a46;
- background:
-   radial-gradient(ellipse 72% 48% at 2% 0%,rgba(251,208,226,.35),transparent 75%),
-   radial-gradient(ellipse 64% 50% at 100% 100%,rgba(249,217,230,.28),transparent 74%),
-   #fff;
+ background:#fff;
  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
 }
 .site-b-pin-panel {
