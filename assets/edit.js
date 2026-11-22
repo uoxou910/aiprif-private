@@ -128,105 +128,41 @@ async function load(){
 }
 
 function render(){
-  const publicCount=cards.filter(x=>x.visible!==false).length;
-
-  document.body.innerHTML=`
-    <header class="header admin-header">
-      <div class="header-inner">
-        <div>
-          <div class="title">フレンドカード管理</div>
-          <div class="admin-user">管理者としてログイン中</div>
-        </div>
-
-        <div class="head-actions">
-          <a class="btn" href="index.html">閲覧</a>
-          <button class="btn" id="logout">ログアウト</button>
-          <button class="btn" id="del">削除</button>
-        </div>
-      </div>
-    </header>
-
-    <main class="admin">
-      <div class="upload">
-        <label class="upload-label">
-          ＋ カード画像を追加
-          <input id="files" type="file" accept="image/*" multiple>
-        </label>
-        <div class="hint">
-          複数選択できます。画像はGoogle Driveに保存されます。
-        </div>
-      </div>
-
-      <div class="search admin-search">
-        <span>⌕</span>
-        <input id="q"
-          placeholder="キャラ名・コーデ名で検索"
-          value="${esc(q)}"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false">
-      </div>
-
-      <div class="section">
-        登録カード <span>${cards.length}</span>件
-        <span class="admin-public-count">／ 公開 ${publicCount}件</span>
-      </div>
-
-      <div class="admin-grid" id="list"></div>
-    </main>
-
-    <div class="bar" id="bar">
-      <div class="count" id="selCount">0件選択中</div>
-      <button id="cancel">キャンセル</button>
-      <button id="exec" style="background:#fff;color:#d9535f">削除</button>
-    </div>
-
-    <div class="modal admin-modal" id="adminModal">
-      <div class="modal-content">
-        <img id="adminModalImg" alt="">
-        <button class="close" id="adminModalClose" aria-label="閉じる">×</button>
-      </div>
-    </div>
-
-    <div class="toast" id="toast"></div>`;
-
-  draw();
-
-  $('#files').onchange=e=>addFiles(e.target.files);
-
-  let searchTimer;
-  $('#q').oninput=e=>{
-    clearTimeout(searchTimer);
-    const value=e.target.value;
-    searchTimer=setTimeout(()=>{
-      q=value;
-      draw();
-    },120);
-  };
-
-  $('#del').onclick=()=>{
-    deleteMode=!deleteMode;
-    selected.clear();
-    updateBar();
-    draw();
-  };
-
-  $('#cancel').onclick=()=>{
-    deleteMode=false;
-    selected.clear();
-    updateBar();
-    draw();
-  };
-
-  $('#exec').onclick=deleteSelected;
-  $('#logout').onclick=logout;
-
-  $('#adminModalClose').onclick=closePreview;
-  $('#adminModal').onclick=e=>{
-    if(e.target.id==='adminModal')closePreview();
-  };
+ const publicCount=cards.filter(x=>x.visible!==false).length;
+ document.body.innerHTML=`<header class="app-header"><div class="title-bar"><div class="header-inner">
+ <strong class="app-title">フレカ管理</strong><div class="header-actions"><button class="hamburger" id="menu-toggle" type="button" aria-expanded="false" aria-label="メニューを開く"><svg class="hamburger-lines" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="2"/><rect x="2" y="11" width="20" height="2"/><rect x="2" y="17" width="20" height="2"/></svg></button></div></div></div></header>
+ <div class="menu-scrim" id="menu-scrim"></div><nav class="hamburger-panel" id="hamburger-panel" aria-label="管理メニュー"><a href="index.html">公開画面へ切替</a><button class="selected" id="menu-cards" type="button">フレカ管理</button><button id="logout" type="button">ログアウト</button></nav>
+ <button class="drawer-close" id="drawer-close" type="button" aria-hidden="true" aria-label="メニューを閉じる">×</button>
+ <div class="admin-shell"><div class="animated-content">
+ <div class="section-head"><h2>フレカ一覧 <small class="note">${cards.length}件・公開${publicCount}件</small></h2><div class="row"><button class="tiny-btn" id="del" type="button">一括削除</button><button class="btn primary" type="button" id="upload-trigger">＋ フレカを追加</button></div></div>
+ <input id="files" type="file" accept="image/*" multiple hidden>
+ <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 5 5"/></svg><input id="q" type="search" placeholder="キャラ名・コーデ名で検索" autocomplete="off" spellcheck="false" value="${esc(q)}"></label>
+ <div class="admin-card-grid" id="list"></div></div></div>
+ <div class="site-b-bulkbar" id="bar"><span id="selCount">0件選択中</span><button type="button" class="tiny-btn" id="cancel">キャンセル</button><button type="button" class="btn danger" id="exec">削除</button></div>
+ <div class="overlay hidden" id="adminModal"><img id="adminModalImg" alt="フレカ拡大"><button class="overlay-close" id="adminModalClose" type="button" aria-label="閉じる">×</button></div>
+ <div id="editor-host"></div><div class="toast" id="toast"></div>`;
+ const menu=$('#menu-toggle'),panel=$('#hamburger-panel'),scrim=$('#menu-scrim'),close=$('#drawer-close');
+ const positionClose=()=>{const r=menu.getBoundingClientRect();Object.assign(close.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});};
+ const toggle=open=>{
+  if(open)positionClose();
+  menu.setAttribute('aria-expanded',String(open));
+  panel.classList.toggle('is-open',open);scrim.classList.toggle('is-open',open);
+  close.classList.toggle('is-open',open);close.setAttribute('aria-hidden',String(!open));
+ };
+ menu.onclick=()=>toggle(!panel.classList.contains('is-open'));
+ scrim.onclick=()=>toggle(false);close.onclick=()=>toggle(false);$('#menu-cards').onclick=()=>toggle(false);
+ window.addEventListener('resize',()=>{if(panel.isConnected&&panel.classList.contains('is-open'))positionClose();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){toggle(false);closePreview();closeEditor();}});
+ draw();
+ $('#upload-trigger').onclick=()=>$('#files').click();
+ $('#files').onchange=e=>addFiles(e.target.files);
+ let timer;$('#q').oninput=e=>{clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v;draw();},120);};
+ $('#del').onclick=()=>{deleteMode=!deleteMode;selected.clear();updateBar();draw();};
+ $('#cancel').onclick=()=>{deleteMode=false;selected.clear();updateBar();draw();};
+ $('#exec').onclick=deleteSelected;$('#logout').onclick=logout;
+ $('#adminModalClose').onclick=closePreview;$('#adminModal').onclick=e=>{if(e.target.id==='adminModal')closePreview();};
+ updateBar();
 }
-
 function filteredCards(){
   if(!q)return cards;
   const nq=normalizeSearchText(q);
