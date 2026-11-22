@@ -292,7 +292,9 @@ function setupSiteBInputHistory(extra=[]){
   const query=normalizeSearchText(input.value.trim());
   if(!query){hide();return;}
   const kind=input.matches('input[data-code],input.code')?'code':'chara';
-  matched=siteBInputHistory(kind,extra)
+  const entryKey=input.dataset.code||input.dataset.chara||'';
+  const otherEntries=entryKey?extra.filter(item=>String(item.key)!==entryKey):extra;
+  matched=siteBInputHistory(kind,otherEntries)
    .filter(v=>normalizeSearchText(v).includes(query))
    .sort((a,b)=>{
     const pa=normalizeSearchText(a).startsWith(query)?0:1;
