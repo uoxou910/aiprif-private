@@ -1020,13 +1020,22 @@ body[data-page="edit"] .site-b-search-filter-row {
  max-width:980px;
  gap:12px;
 }
+/* Align tag toggles with the corresponding character and outfit name inputs. */
 body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
- display:flex;
+ display:grid;
  flex:0 0 auto;
- flex-direction:column;
- align-items:flex-start;
- justify-content:center;
- gap:10px;
+ grid-template-rows:repeat(2,39px);
+ align-content:center;
+ align-items:stretch;
+ row-gap:7px;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-upload-dark {
+ display:inline-flex;
+ align-self:stretch;
+ justify-content:flex-start;
+ align-items:center;
+ min-height:39px;
+ line-height:1;
 }
 body[data-page="edit"] .site-b-edit-header {
  flex-wrap:wrap;
@@ -1048,11 +1057,17 @@ body[data-page="edit"] .site-b-edit-header-right {
  body[data-page="edit"] .card-entry-dialog .upload-fields {grid-column:2;grid-row:1;}
  body[data-page="edit"] .card-entry-dialog .upload-remove {grid-column:3;grid-row:1;}
  body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
+  display:flex;
   grid-column:2 / 4;
   grid-row:2;
   flex-direction:row;
+  align-items:center;
   flex-wrap:wrap;
   gap:12px;
+ }
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-upload-dark {
+  align-self:center;
+  min-height:24px;
  }
 }
 
