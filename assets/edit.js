@@ -118,8 +118,10 @@ async function init(){
     return;
   }
 
-  // Revalidate the tab-scoped credential with GAS before restoring the UI.
+  // Keep the login screen visible while validating an existing tab session.
+  renderLogin();
   if(adminPassword){
+    setLoginBusy(true);
     try{
       await post('auth');
       await load();
@@ -127,9 +129,9 @@ async function init(){
     }catch(e){
       sessionStorage.removeItem('freca_admin_password');
       adminPassword='';
+      renderLogin();
     }
   }
-  renderLogin();
 }
 
 function renderLogin(error=''){
@@ -148,10 +150,22 @@ function renderLogin(error=''){
  peek.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();reveal(true);}});
  peek.addEventListener('keyup',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();reveal(false);}});
 }
+function setLoginBusy(busy){
+  const button=$('#login');
+  if(!button)return;
+  button.disabled=busy;
+  button.textContent=busy?'ログイン中…':'ログイン';
+  const input=$('#password'),peek=$('#password-peek');
+  if(input)input.disabled=busy;
+  if(peek)peek.disabled=busy;
+}
 async function login(){
-  const p=$('#password').value;
+  const input=$('#password'),button=$('#login');
+  if(!input||button?.disabled)return;
+  const p=input.value;
   if(!p)return renderLogin('パスワードを入力してください。');
 
+  setLoginBusy(true);
   adminPassword=p;
   try{
     await post('auth');
@@ -160,7 +174,7 @@ async function login(){
   }catch(e){
     adminPassword='';
     sessionStorage.removeItem('freca_admin_password');
-    renderLogin('パスワードが違います。');
+    renderLogin('ログインまたは読み込みに失敗しました：'+(e.message||'再度お試しください'));
   }
 }
 
@@ -172,14 +186,10 @@ function logout(){
 }
 
 async function load(){
-  document.body.innerHTML='<div class="loading">読み込み中…</div>';
-
-  try{
-    cards=((await post('adminList')).cards||[]).map(siteBDecodeCard);
-    render();
-  }catch(e){
-    showMessage('読み込みに失敗しました',e.message);
-  }
+  // Keep the login form (and its busy label) until the card data is ready.
+  // Do not replace the entire page with the blank loading interstitial.
+  cards=((await post('adminList')).cards||[]).map(siteBDecodeCard);
+  render();
 }
 
 function render(){
