@@ -478,16 +478,64 @@ function openUploader(){
  <div class="overlay hidden" id="site-b-upload-zoom" role="dialog" aria-modal="true" aria-label="追加する画像の拡大">
    <img id="site-b-upload-zoom-image" alt="追加する画像の拡大">
    <button type="button" class="overlay-close" id="site-b-upload-zoom-close" aria-label="閉じる">×</button>
+ </div>
+ <div class="overlay hidden" id="site-b-duplicates-modal" role="dialog" aria-modal="true" aria-label="同一フレカ一覧">
+  <section class="site-b-duplicates-panel">
+   <div class="site-b-duplicates-heading"><strong id="site-b-duplicates-title">同一フレカ</strong><button type="button" class="site-b-duplicates-close" id="site-b-duplicates-close" aria-label="閉じる">×</button></div>
+   <div class="site-b-duplicates-grid" id="site-b-duplicates-grid"></div>
+  </section>
  </div>`;
  const zoom=$('#site-b-upload-zoom');
  $('#site-b-upload-zoom-close').onclick=closeSiteBUploadZoom;
  zoom.onclick=e=>{if(e.target===zoom)closeSiteBUploadZoom();};
+ const duplicatesModal=$('#site-b-duplicates-modal');
+ const duplicatesGrid=$('#site-b-duplicates-grid');
+ const closeDuplicates=()=>{
+  duplicatesModal.classList.add('hidden');
+  duplicatesGrid.innerHTML='';
+ };
+ $('#site-b-duplicates-close').onclick=closeDuplicates;
+ duplicatesModal.onclick=e=>{if(e.target===duplicatesModal)closeDuplicates();};
+ const duplicateMatches=item=>{
+  const chara=normalizeSearchText(String(item.chara||'').trim());
+  const code=normalizeSearchText(String(item.code||'').trim());
+  if(!chara||!code)return [];
+  return cards.filter(card=>normalizeSearchText(String(card.chara||'').trim())===chara
+   && normalizeSearchText(String(card.code||'').trim())===code
+   && !!card.darkened===!!item.darkened && !!card.mikuko===!!item.mikuko);
+ };
+ const refreshDuplicates=()=>{
+  for(const item of entries){
+   const button=$('#upload-details [data-duplicate="'+item.key+'"]');
+   if(!button)continue;
+   const count=duplicateMatches(item).length;
+   button.textContent='同一:'+count+'件';
+   button.hidden=!count;
+   button.setAttribute('aria-label','一致する登録済みフレカ '+count+'件を表示');
+  }
+ };
+ const showDuplicates=key=>{
+  const item=entries.find(x=>x.key===key);
+  if(!item)return;
+  const matches=duplicateMatches(item);
+  if(!matches.length)return;
+  $('#site-b-duplicates-title').textContent='同一フレカ '+matches.length+'件';
+  duplicatesGrid.innerHTML=matches.map((card,i)=>`<button type="button" class="site-b-duplicate-image" data-duplicate-image="${i}" aria-label="${esc(card.chara+' '+card.code)}の画像を拡大">${card.image_url?`<img src="${esc(siteBListThumb(card.image_url))}" alt="${esc(card.code)}" loading="lazy">`:'<span>画像なし</span>'}</button>`).join('');
+  duplicatesGrid.querySelectorAll('[data-duplicate-image]').forEach(button=>button.onclick=()=>{
+   const card=matches[Number(button.dataset.duplicateImage)];
+   if(!card?.image_url)return;
+   $('#site-b-upload-zoom-image').src=card.image_url;
+   zoom.classList.remove('hidden');
+  });
+  duplicatesModal.classList.remove('hidden');
+ };
  const zone=$('#upload-zone'),picker=$('#upload-files'),submit=$('#upload-save'),actions=$('#upload-actions');
  const syncFirstChara=()=>{
   if(!copyFirstChara||entries.length<2)return;
   const first=entries[0].chara;
   for(let i=1;i<entries.length;i++)entries[i].chara=first;
   $('#upload-details')?.querySelectorAll('input[data-chara]').forEach((input,i)=>{if(i>0)input.value=first;});
+  refreshDuplicates();
  };
  const paint=()=>{
   const host=$('#upload-details');if(!host)return;
@@ -499,6 +547,7 @@ function openUploader(){
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
    </div>
 <div class="site-b-upload-tags"><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-mikuko="${item.key}" ${item.mikuko?'checked':''}>ミクコ</label></div>
+   <button type="button" class="site-b-duplicate-count" data-duplicate="${item.key}" hidden>同一:0件</button>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
   const bulkRow=$('#site-b-chara-copy-row'),bulkCheck=$('#site-b-chara-copy');
@@ -506,6 +555,7 @@ function openUploader(){
   bulkCheck.checked=copyFirstChara;
   bulkCheck.onchange=()=>{copyFirstChara=bulkCheck.checked;syncFirstChara();};
   syncFirstChara();
+  refreshDuplicates();
   actions.classList.toggle('hidden',entries.length===0);
   submit.textContent=`${entries.length}件を追加する`;
   setupSiteBInputHistory(entries);
@@ -515,8 +565,10 @@ function openUploader(){
    $('#site-b-upload-zoom-image').src=item.preview;
    zoom.classList.remove('hidden');
   });
+  host.querySelectorAll('[data-duplicate]').forEach(button=>button.onclick=()=>showDuplicates(button.dataset.duplicate));
   host.querySelectorAll('[data-code]').forEach(input=>input.oninput=()=>{
    const item=entries.find(x=>x.key===input.dataset.code);if(item)item.code=input.value;
+   refreshDuplicates();
   });
   host.querySelectorAll('[data-chara]').forEach((input,i)=>input.oninput=()=>{
    const item=entries.find(x=>x.key===input.dataset.chara);if(item)item.chara=input.value;
@@ -524,12 +576,15 @@ function openUploader(){
     if(i===0)syncFirstChara();
     else{copyFirstChara=false;bulkCheck.checked=false;}
    }
+   refreshDuplicates();
   });
   host.querySelectorAll('[data-dark]').forEach(input=>input.onchange=()=>{
    const item=entries.find(x=>x.key===input.dataset.dark);if(item)item.darkened=input.checked;
+   refreshDuplicates();
   });
   host.querySelectorAll('[data-mikuko]').forEach(input=>input.onchange=()=>{
    const item=entries.find(x=>x.key===input.dataset.mikuko);if(item)item.mikuko=input.checked;
+   refreshDuplicates();
   });
   host.querySelectorAll('[data-remove]').forEach(button=>button.onclick=()=>{
    if(preparing||submitting)return;
