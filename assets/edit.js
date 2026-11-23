@@ -261,7 +261,7 @@ function draw(){
     <div class="admin-sub">${esc(x.code||'コーデ名未設定')}${visible?'':' ・ 非公開'}</div>
     <div class="row">
      <button type="button" class="tiny-btn" data-edit="${id}">編集</button>
-     <button type="button" class="tiny-btn" data-visibility="${id}" data-current-visible="${visible}">${visible?'非公開にする':'公開する'}</button>
+     <button type="button" class="tiny-btn" data-visibility="${id}" data-current-visible="${visible}">${visible?'非公開':'公開'}</button>
      <button type="button" class="tiny-btn danger" data-delete="${id}">削除</button>
     </div>
    </div></article>`;
