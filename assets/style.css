@@ -1546,3 +1546,46 @@ body[data-page="edit"] #site-b-upload-zoom {
   padding:15px;
  }
 }
+
+/* Three stacked upload indicators: Dark / Mikuko / Matching count. */
+body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
+ display:grid;
+ grid-template-rows:repeat(3,39px);
+ align-content:center;
+ align-items:center;
+ row-gap:7px;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicate-count {
+ display:inline-flex;
+ align-items:center;
+ justify-content:flex-start;
+ justify-self:start;
+ align-self:center;
+ min-height:39px;
+ padding:6px 0;
+ line-height:1;
+}
+body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicate-count:disabled {
+ opacity:1;
+ color:#a6a1ac;
+ cursor:default;
+ text-decoration:none;
+ background:transparent;
+}
+@media (max-width:499px) {
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags {
+  display:grid;
+  grid-column:2 / 4;
+  grid-row:2;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:repeat(3,28px);
+  align-content:start;
+  justify-items:start;
+  row-gap:5px;
+ }
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-upload-dark,
+ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicate-count {
+  min-height:28px;
+  align-self:center;
+ }
+}
