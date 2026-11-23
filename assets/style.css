@@ -1392,7 +1392,7 @@ body[data-page="edit"] .admin-card-grid .admin-card-body > .row {
 /* Site B: prevent iOS Safari focus zoom when the page is viewed at 75%. */
 @media (max-width:699px) {
  body[data-page="view"] .site-b-public-search-row > .search input[type="search"] {
-  font-size:22px; /* 22px at 75% page zoom is about 16.5px visually. */
+  font-size:20px; /* Slightly smaller while retaining a larger tap-to-type font. */
   -webkit-text-size-adjust:100%;
  }
 }
