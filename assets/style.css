@@ -1589,3 +1589,21 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
   align-self:center;
  }
 }
+
+/* Increase PC admin zoom size without modifying mobile image previews. */
+@media (min-width:900px) and (hover:hover) and (pointer:fine) {
+ body[data-page="edit"] #adminModal > img {
+  width:min(780px,calc(100vw - 40px));
+  height:auto;
+  max-width:min(780px,calc(100vw - 40px));
+  max-height:90dvh;
+  object-fit:contain;
+ }
+ body[data-page="edit"] #site-b-upload-zoom > img {
+  width:min(1350px,calc(100vw - 40px));
+  height:auto;
+  max-width:min(1350px,calc(100vw - 40px));
+  max-height:90dvh;
+  object-fit:contain;
+ }
+}
