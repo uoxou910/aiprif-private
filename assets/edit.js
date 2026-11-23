@@ -510,8 +510,8 @@ function openUploader(){
    if(!button)continue;
    const count=duplicateMatches(item).length;
    button.textContent='同一:'+count+'件';
-   button.hidden=!count;
-   button.setAttribute('aria-label','一致する登録済みフレカ '+count+'件を表示');
+   button.disabled=count===0;
+   button.setAttribute('aria-label',count?'一致する登録済みフレカ '+count+'件を表示':'一致する登録済みフレカはありません');
   }
  };
  const showDuplicates=key=>{
@@ -546,8 +546,7 @@ function openUploader(){
     <input type="text" data-chara="${item.key}" aria-label="${i+1}件目のキャラ名" placeholder="キャラ名" maxlength="120" value="${esc(item.chara)}">
     <input type="text" data-code="${item.key}" aria-label="${i+1}件目のコーデ名" placeholder="コーデ名" maxlength="120" value="${esc(item.code)}">
    </div>
-<div class="site-b-upload-tags"><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-mikuko="${item.key}" ${item.mikuko?'checked':''}>ミクコ</label></div>
-   <button type="button" class="site-b-duplicate-count" data-duplicate="${item.key}" hidden>同一:0件</button>
+<div class="site-b-upload-tags"><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-dark="${item.key}" ${item.darkened?'checked':''}>ダーク化</label><label class="site-b-dark-check site-b-upload-dark"><input type="checkbox" data-mikuko="${item.key}" ${item.mikuko?'checked':''}>ミクコ</label><button type="button" class="site-b-duplicate-count" data-duplicate="${item.key}" disabled>同一:0件</button></div>
    <button type="button" class="upload-remove" data-remove="${item.key}" aria-label="${i+1}件目を除外">×</button>
   </div>`).join('');
   const bulkRow=$('#site-b-chara-copy-row'),bulkCheck=$('#site-b-chara-copy');
