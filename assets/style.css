@@ -1404,3 +1404,9 @@ body[data-page="edit"] .admin-card-grid .admin-card-body > .row {
   -webkit-text-size-adjust:100%;
  }
 }
+
+/* Admin login password field. */
+body[data-page="edit"] .login-panel input[type="password"],
+body[data-page="edit"] .login-panel input[type="text"] {
+ font-size:20px;
+}
