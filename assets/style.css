@@ -1410,3 +1410,40 @@ body[data-page="edit"] .login-panel input[type="password"],
 body[data-page="edit"] .login-panel input[type="text"] {
  font-size:20px;
 }
+
+/* Mobile admin header: keep title, bulk select, add and menu on one row. */
+@media (max-width:540px) {
+ body[data-page="edit"] .header-inner {
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:9px 10px;
+  min-height:64px;
+ }
+ body[data-page="edit"] .header-inner > .app-title {
+  flex:0 0 auto;
+  margin:0;
+  white-space:nowrap;
+ }
+ body[data-page="edit"] .site-b-admin-header-actions {
+  flex:0 1 auto;
+  min-width:0;
+  width:auto;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+ }
+ body[data-page="edit"] .site-b-header-bulk,
+ body[data-page="edit"] .site-b-header-add {
+  flex:0 0 auto;
+  padding:8px 9px;
+  font-size:10px;
+  white-space:nowrap;
+ }
+ body[data-page="edit"] .site-b-admin-header-actions .hamburger {
+  flex:0 0 36px;
+  width:36px;
+  height:40px;
+ }
+}
