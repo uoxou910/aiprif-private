@@ -1607,3 +1607,20 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
   object-fit:contain;
  }
 }
+
+/* Unified desktop full-card viewer: fixed displayed box, independent of image resolution.
+   The image is contained without changing its aspect ratio. Mobile/touch remains unchanged. */
+@media (min-width:900px) and (hover:hover) and (pointer:fine) {
+ body[data-page="view"] #overlay > #full-image,
+ body[data-page="edit"] #picture-modal > img,
+ body[data-page="edit"] #site-a-duplicate-zoom > img,
+ body[data-page="edit"] #adminModal > #adminModalImg,
+ body[data-page="edit"] #site-b-upload-zoom > #site-b-upload-zoom-image {
+  box-sizing:border-box;
+  width:1350px;
+  height:1310px;
+  max-width:calc(100vw - 40px);
+  max-height:calc(90dvh - 40px);
+  object-fit:contain;
+ }
+}
