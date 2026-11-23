@@ -1396,3 +1396,11 @@ body[data-page="edit"] .admin-card-grid .admin-card-body > .row {
   -webkit-text-size-adjust:100%;
  }
 }
+
+/* Match the public search input in Site B's mobile admin screen. */
+@media (max-width:699px) {
+ body[data-page="edit"] .site-b-search-filter-row > .search input[type="search"] {
+  font-size:20px;
+  -webkit-text-size-adjust:100%;
+ }
+}
