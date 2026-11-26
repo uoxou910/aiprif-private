@@ -1753,3 +1753,17 @@ body[data-page="view"] .site-b-filter-group > label {
   background:rgb(250,249,252);backdrop-filter:none;-webkit-backdrop-filter:none;
  }
 }
+
+/* Use one shared control height for the search field and checkbox group. */
+body[data-page="view"] .site-b-public-search-row,
+body[data-page="edit"] .site-b-search-filter-row {--site-b-search-height:52px;}
+body[data-page="view"] .site-b-public-search-row > .search,
+body[data-page="view"] .site-b-public-search-row > .site-b-filter-group,
+body[data-page="edit"] .site-b-search-filter-row > .search,
+body[data-page="edit"] .site-b-search-filter-row > .site-b-filter-group {
+ height:var(--site-b-search-height);min-height:var(--site-b-search-height);
+ box-sizing:border-box;margin-top:0;margin-bottom:0;
+}
+@media(max-width:699px){
+ body[data-page="view"] .site-b-public-search-row {--site-b-search-height:39px;}
+}
