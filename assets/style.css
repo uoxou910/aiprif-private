@@ -1716,3 +1716,11 @@ body[data-page="edit"] .admin-title .site-b-dark-label {
  body[data-page="view"] .card-chara .site-b-dark-label,
  body[data-page="edit"] .admin-title .site-b-dark-label {font-size:11px;}
 }
+
+/* Keep the darkened label immediately to the right of the character name. */
+body[data-page="view"] .card-chara,
+body[data-page="edit"] .admin-card-grid .admin-title {display:flex;align-items:baseline;flex-wrap:nowrap;gap:4px;min-width:0;}
+body[data-page="edit"] .admin-title .site-b-character-name,
+body[data-page="view"] .card-chara .site-b-character-name {min-width:0;overflow-wrap:anywhere;}
+body[data-page="edit"] .admin-title .site-b-dark-label,
+body[data-page="view"] .card-chara .site-b-dark-label {flex:0 0 auto;display:inline-block;white-space:nowrap;}
