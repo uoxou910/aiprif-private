@@ -327,14 +327,14 @@ function setupSiteBInputHistory(extra=[]){
  };
  const position=()=>{
   if(popup.hidden||!current?.isConnected)return;
-  const rect=current.getBoundingClientRect();
-  const vv=window.visualViewport;
-  const bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+  const input=current;
+  const rect=input.getBoundingClientRect();
+  const viewport=window.visualViewport;
+  const bottom=viewport?viewport.offsetTop+viewport.height:innerHeight;
   popup.style.left=rect.left+'px';
   popup.style.top=(rect.bottom+4)+'px';
   popup.style.width=rect.width+'px';
   popup.style.maxHeight=Math.max(36,Math.min(214,bottom-rect.bottom-8))+'px';
-  // Correct browser-specific fixed-position offsets after keyboard/viewport movement.
   const actual=popup.getBoundingClientRect();
   popup.style.left=(rect.left+(rect.left-actual.left))+'px';
   popup.style.top=(rect.bottom+4+(rect.bottom+4-actual.top))+'px';
@@ -429,48 +429,36 @@ function setupSiteBInputHistory(extra=[]){
  host.addEventListener('scroll',reposition,{capture:true,passive:true,signal:controller.signal});
  window.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
+ // The viewport alone controls the mobile shell; focus never changes its layout.
  const vv=window.visualViewport;
  const shade=host.querySelector('#upload-shade');
  const dialog=shade?.querySelector('.card-entry-dialog');
  const mobile=matchMedia('(max-width:699px)');
- let frame=0,baseline=vv?.height||innerHeight,lastHeight=-1,lastTop=-1,lastInput=null;
+ let frame=0,lastHeight=-1,lastTop=-1;
  const followViewport=()=>{
-  cancelAnimationFrame(frame);
+  if(frame)return;
   frame=requestAnimationFrame(()=>{
+   frame=0;
    if(controller.signal.aborted)return;
    if(dialog&&vv&&mobile.matches){
-    const input=document.activeElement;
-    const list=dialog.querySelector('.upload-entries');
-    const editing=!!(list&&input&&list.contains(input)&&input.matches('input:not([type="checkbox"])'));
-    if(!editing)baseline=Math.max(baseline,vv.height);
-    const keyboard=editing&&(baseline-vv.height>100||innerHeight-vv.height>100);
-    dialog.classList.toggle('upload-keyboard-open',keyboard);
-    const base=shade.getBoundingClientRect();
-    const height=Math.max(0,vv.height-(keyboard?12:40));
-    const top=vv.offsetTop-base.top+(keyboard?6:20);
+    const height=Math.max(0,Math.round(vv.height));
+    const top=Math.round(vv.offsetTop);
     if(height!==lastHeight||top!==lastTop){
-     dialog.style.setProperty('--upload-visible-height',height+'px');
-     dialog.style.setProperty('--upload-visible-top',top+'px');
+     shade.style.setProperty('--upload-vv-height',height+'px');
+     shade.style.setProperty('--upload-vv-top',top+'px');
      lastHeight=height;lastTop=top;
     }
-    if(editing&&(input!==lastInput||keyboard)){
-     const bounds=list.getBoundingClientRect(),rect=input.getBoundingClientRect();
-     if(rect.bottom>bounds.bottom-8)list.scrollTop+=rect.bottom-bounds.bottom+8;
-     else if(rect.top<bounds.top+8)list.scrollTop+=rect.top-bounds.top-8;
-    }
-    lastInput=input;
-   }else if(dialog){
-    dialog.classList.remove('upload-keyboard-open');
-    dialog.style.removeProperty('--upload-visible-height');
-    dialog.style.removeProperty('--upload-visible-top');
+   }else if(shade){
+    shade.style.removeProperty('--upload-vv-height');
+    shade.style.removeProperty('--upload-vv-top');
+    lastHeight=-1;lastTop=-1;
    }
    reposition();
   });
  };
  vv?.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
  vv?.addEventListener('scroll',followViewport,{passive:true,signal:controller.signal});
- host.addEventListener('focusin',followViewport,{signal:controller.signal});
- host.addEventListener('focusout',followViewport,{signal:controller.signal});
+ window.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
  followViewport();
  controller.signal.addEventListener('abort',()=>cancelAnimationFrame(frame),{once:true});
 }
