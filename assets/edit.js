@@ -257,7 +257,7 @@ function draw(){
     ${bulkSelectMode?`<button type="button" class="site-b-selectbox ${selected.has(String(x.id))?'selected':''}" data-select="${id}" aria-label="${esc(x.code||'コーデ名未設定')}を選択" aria-pressed="${selected.has(String(x.id))}">${selected.has(String(x.id))?'✓':'選択'}</button>`:''}
    </div>
    <div class="admin-card-body">
-    <div class="admin-title">${esc(x.chara||'キャラ名未設定')}</div>
+    <div class="admin-title">${esc(x.chara||'キャラ名未設定')}${x.darkened===true?' <span class="site-b-dark-label">(ダーク化)</span>':''}</div>
     <div class="admin-sub">${esc(x.code||'コーデ名未設定')}${visible?'':' ・ 非公開'}</div>
     <div class="row">
      <button type="button" class="tiny-btn" data-edit="${id}">編集</button>
@@ -799,7 +799,15 @@ async function saveCard(id){
     const row=button?.closest('.admin-card');
     if(!q&&!darkOnly&&!mikukoOnly&&row){
      const title=row.querySelector('.admin-title'),subtitle=row.querySelector('.admin-sub');
-     if(title)title.textContent=card.chara||'キャラ名未設定';
+     if(title){
+      title.textContent=card.chara||'キャラ名未設定';
+      if(card.darkened===true){
+       const label=document.createElement('span');
+       label.className='site-b-dark-label';
+       label.textContent='(ダーク化)';
+       title.append(' ',label);
+      }
+     }
      if(subtitle)subtitle.textContent=(card.code||'コーデ名未設定')+(card.visible===false?' ・ 非公開':'');
     }else draw();
    }
