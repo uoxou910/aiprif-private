@@ -1706,3 +1706,13 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
   width:15px;height:15px;flex:0 0 15px;margin:0;
  }
 }
+
+/* Darkened card label matches the outfit name typography. */
+body[data-page="view"] .card-chara .site-b-dark-label,
+body[data-page="edit"] .admin-title .site-b-dark-label {
+ color:#76717d;font-size:12px;font-weight:400;white-space:nowrap;
+}
+@media(max-width:699px){
+ body[data-page="view"] .card-chara .site-b-dark-label,
+ body[data-page="edit"] .admin-title .site-b-dark-label {font-size:11px;}
+}
