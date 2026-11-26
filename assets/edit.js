@@ -430,18 +430,30 @@ function setupSiteBInputHistory(extra=[]){
  window.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
  const vv=window.visualViewport;
+ const shade=host.querySelector('#upload-shade');
+ const dialog=shade?.querySelector('.card-entry-dialog');
+ const mobile=matchMedia('(max-width:699px)');
  let frame=0;
  const followViewport=()=>{
   cancelAnimationFrame(frame);
   frame=requestAnimationFrame(()=>{
    if(controller.signal.aborted)return;
-   const shade=host.querySelector('.dialog-shade');
-   if(shade&&vv&&matchMedia('(max-width:699px)').matches){
-    shade.style.top=vv.offsetTop+'px';
-    shade.style.bottom='auto';
-    shade.style.height=vv.height+'px';
-    const dialog=shade.querySelector('.card-entry-dialog');
-    if(dialog)dialog.style.maxHeight=Math.max(0,vv.height-40)+'px';
+   if(dialog&&vv&&mobile.matches){
+    // Keep the backdrop fixed; move only the dialog within the visual viewport.
+    const base=shade.getBoundingClientRect();
+    const top=vv.offsetTop-base.top;
+    dialog.style.setProperty('--upload-visible-height',Math.max(0,vv.height-40)+'px');
+    dialog.style.setProperty('--upload-visible-top',Math.max(0,top+20)+'px');
+    const input=document.activeElement;
+    const list=dialog.querySelector('.upload-entries');
+    if(list&&input&&list.contains(input)){
+     const bounds=list.getBoundingClientRect(),rect=input.getBoundingClientRect();
+     if(rect.bottom>bounds.bottom-8)list.scrollTop+=rect.bottom-bounds.bottom+8;
+     else if(rect.top<bounds.top+8)list.scrollTop+=rect.top-bounds.top-8;
+    }
+   }else if(dialog){
+    dialog.style.removeProperty('--upload-visible-height');
+    dialog.style.removeProperty('--upload-visible-top');
    }
    reposition();
   });
