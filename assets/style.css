@@ -1706,7 +1706,6 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
   padding:10px 14px;
  }
  body[data-page="edit"] #upload-shade .upload-keyboard-open .dialog-heading,
- body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone,
  body[data-page="edit"] #upload-shade .upload-keyboard-open .card-chara-bulk,
  body[data-page="edit"] #upload-shade .upload-keyboard-open .site-b-upload-status {
   display:none!important;
@@ -1720,4 +1719,19 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
   margin-top:4px;
   padding-top:4px;
  }
+}
+
+/* Keep the image picker available during keyboard input, in a compact row. */
+@media (max-width:699px) {
+ body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone {
+  display:flex;
+  flex-direction:row;
+  flex:0 0 auto;
+  min-height:36px;
+  height:36px;
+  margin:0 0 6px;
+  gap:6px;
+ }
+ body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone .upload-symbol {font-size:16px;}
+ body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone .upload-hint {display:none;}
 }
