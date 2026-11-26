@@ -1625,32 +1625,70 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
  }
 }
 
-/* Mobile add-card dialog: match search input typography and keep save outside scrolling. */
+
+/* Mobile uploader: one stable shell, one scrolling list, and a fixed footer.
+   No focus-based visibility or size changes. */
 @media (max-width:699px) {
+ body[data-page="edit"] #upload-shade {
+  padding:0;
+ }
  body[data-page="edit"] #upload-shade .card-entry-dialog {
+  position:absolute;
+  top:calc(var(--upload-vv-top,0px) + 6px);
+  left:50%;
+  transform:translateX(-50%);
+  animation:none;
+  width:min(620px,calc(100% - 24px));
+  height:calc(var(--upload-vv-height,100dvh) - 12px);
+  max-height:calc(var(--upload-vv-height,100dvh) - 12px);
   display:flex;
   flex-direction:column;
   min-height:0;
-  max-height:calc(100dvh - 40px);
   overflow:hidden;
+  padding:10px 14px;
  }
- body[data-page="edit"] #upload-shade .card-entry-dialog .upload-fields input {
+ body[data-page="edit"]:has(#upload-shade .card-entry-dialog) {
+  overflow:hidden;
+  overscroll-behavior:none;
+ }
+ body[data-page="edit"] #upload-shade .dialog-heading {
+  flex:0 0 auto;
+  margin-bottom:6px;
+ }
+ body[data-page="edit"] #upload-shade .dialog-heading .dialog-x {width:36px;height:36px;}
+ body[data-page="edit"] #upload-shade .card-upload-zone {
+  display:flex;
+  flex-direction:row;
+  flex:0 0 auto;
+  min-height:36px;
+  height:36px;
+  gap:6px;
+ }
+ body[data-page="edit"] #upload-shade .card-upload-zone .upload-symbol {font-size:16px;}
+ body[data-page="edit"] #upload-shade .card-upload-zone .upload-hint {display:none;}
+ body[data-page="edit"] #upload-shade .card-chara-bulk {margin:6px 0;line-height:1.3;}
+ body[data-page="edit"] #upload-shade .site-b-upload-status {margin:4px 0;min-height:0;}
+ body[data-page="edit"] #upload-shade .upload-fields input {
   font-size:20px;
   -webkit-text-size-adjust:100%;
  }
  body[data-page="edit"] #upload-shade .card-entry-dialog > :not(#upload-details) {flex-shrink:0;}
- body[data-page="edit"] #upload-shade #upload-details {
-  flex:1 1 auto;
+ body[data-page="edit"] #upload-shade .card-entry-dialog .upload-entries {
+  flex:1 1 0;
   min-height:0;
   max-height:none;
   overflow-y:auto;
   overscroll-behavior:contain;
+  overflow-anchor:none;
+  scroll-behavior:auto;
+  scroll-padding-block:8px 56px;
   align-content:start;
+  margin-top:4px;
  }
- body[data-page="edit"] #upload-actions {
+ body[data-page="edit"] #upload-shade .card-entry-dialog .dialog-actions {
   flex:0 0 auto;
-  margin-top:10px;
-  padding-top:8px;
+  margin-top:6px;
+  padding-top:4px;
  }
  body[data-page="edit"] #upload-shade .card-entry-dialog .upload-entry {
   display:grid;
@@ -1663,75 +1701,13 @@ body[data-page="edit"] .card-entry-dialog .site-b-upload-tags > .site-b-duplicat
  body[data-page="edit"] #upload-shade .upload-fields {grid-column:2;grid-row:1;}
  body[data-page="edit"] #upload-shade .upload-remove {grid-column:3;grid-row:1;}
  body[data-page="edit"] #upload-shade .site-b-upload-tags {
-  display:grid;
-  grid-column:2 / 4;
-  grid-row:2;
+  display:grid;grid-column:2 / 4;grid-row:2;
   grid-template-columns:max-content max-content;
   grid-template-rows:repeat(2,25px);
-  column-gap:14px;
-  row-gap:3px;
-  justify-content:start;
-  justify-items:start;
+  column-gap:14px;row-gap:3px;
+  justify-content:start;justify-items:start;
  }
  body[data-page="edit"] #upload-shade .site-b-upload-tags > label:nth-child(1) {grid-column:1;grid-row:1;min-height:25px;}
  body[data-page="edit"] #upload-shade .site-b-upload-tags > label:nth-child(2) {grid-column:2;grid-row:1;min-height:25px;}
  body[data-page="edit"] #upload-shade .site-b-upload-tags > .site-b-duplicate-count {grid-column:1 / 3;grid-row:2;min-height:25px;}
-}
-
-/* Keep the modal centered inside the visible keyboard-safe area, not the backdrop. */
-@media (max-width:699px) {
- body[data-page="edit"] #upload-shade .card-entry-dialog {
-  position:absolute;
-  top:calc(var(--upload-visible-top,20px) + var(--upload-visible-height,calc(100dvh - 40px)) / 2);
-  left:50%;
-  transform:translate(-50%,-50%);
-  animation:none;
-  width:min(620px,calc(100% - 40px));
-  max-height:var(--upload-visible-height,calc(100dvh - 40px));
- }
- body[data-page="edit"]:has(#upload-shade .card-entry-dialog) {
-  overflow:hidden;
-  overscroll-behavior:none;
- }
- body[data-page="edit"] #upload-shade .upload-entries {
-  overflow-anchor:none;
-  scroll-behavior:auto;
- }
-}
-
-/* Keyboard mode: allocate the visible area to the editable card list. */
-@media (max-width:699px) {
- body[data-page="edit"] #upload-shade .card-entry-dialog.upload-keyboard-open {
-  height:var(--upload-visible-height);
-  padding:10px 14px;
- }
- body[data-page="edit"] #upload-shade .upload-keyboard-open .dialog-heading,
- body[data-page="edit"] #upload-shade .upload-keyboard-open .card-chara-bulk,
- body[data-page="edit"] #upload-shade .upload-keyboard-open .site-b-upload-status {
-  display:none!important;
- }
- body[data-page="edit"] #upload-shade .upload-keyboard-open .upload-entries {
-  margin-top:0;
-  flex:1 1 0;
-  min-height:0;
- }
- body[data-page="edit"] #upload-shade .upload-keyboard-open .dialog-actions {
-  margin-top:4px;
-  padding-top:4px;
- }
-}
-
-/* Keep the image picker available during keyboard input, in a compact row. */
-@media (max-width:699px) {
- body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone {
-  display:flex;
-  flex-direction:row;
-  flex:0 0 auto;
-  min-height:36px;
-  height:36px;
-  margin:0 0 6px;
-  gap:6px;
- }
- body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone .upload-symbol {font-size:16px;}
- body[data-page="edit"] #upload-shade .upload-keyboard-open .card-upload-zone .upload-hint {display:none;}
 }
