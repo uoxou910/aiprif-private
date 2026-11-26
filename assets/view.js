@@ -56,7 +56,7 @@ const grid=$('#grid'),loadTrigger=$('#infinite-loader');
 let filteredCards=[],renderedCount=0;
 const batchSize=()=>wideGrid.matches?24:20;
 function cardMarkup(x,i,offset){
- return `<article class="freca-card" data-id="${esc(x.id)}" style="--stagger:${Math.min(i,9)*32}ms"><div class="card-picture" data-id="${esc(x.id)}">${(offset+i)<2&&x.image_url?`<img src="${esc(siteBListThumb(x.image_url))}" alt="${esc(x.code)}" loading="eager" fetchpriority="high" decoding="async">`:cardImage(siteBListThumb(x.image_url),x.code)}</div><div class="card-detail"><div class="card-chara">${esc(x.chara)}</div><div class="card-code">${esc(x.code)}</div></div></article>`;
+ return `<article class="freca-card" data-id="${esc(x.id)}" style="--stagger:${Math.min(i,9)*32}ms"><div class="card-picture" data-id="${esc(x.id)}">${(offset+i)<2&&x.image_url?`<img src="${esc(siteBListThumb(x.image_url))}" alt="${esc(x.code)}" loading="eager" fetchpriority="high" decoding="async">`:cardImage(siteBListThumb(x.image_url),x.code)}</div><div class="card-detail"><div class="card-chara">${esc(x.chara)}${x.darkened===true?' <span class="site-b-dark-label">(ダーク化)</span>':''}</div><div class="card-code">${esc(x.code)}</div></div></article>`;
 }
 function maybeLoadNext(){
  if(renderedCount>=filteredCards.length)return;
