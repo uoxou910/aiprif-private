@@ -328,6 +328,19 @@ function setupSiteBInputHistory(extra=[]){
  const position=()=>{
   if(popup.hidden||!current?.isConnected)return;
   const input=current;
+  if(matchMedia('(max-width:699px)').matches&&input.closest('.mobile-upload-page')){
+   const anchor=input.parentElement;
+   if(popup.parentElement!==anchor)anchor.appendChild(popup);
+   const rect=input.getBoundingClientRect(),base=anchor.getBoundingClientRect();
+   popup.style.position='absolute';
+   popup.style.left=(rect.left-base.left)+'px';
+   popup.style.top=(rect.bottom-base.top+4)+'px';
+   popup.style.width=rect.width+'px';
+   popup.style.maxHeight='180px';
+   return;
+  }
+  if(popup.parentElement!==host)host.appendChild(popup);
+  popup.style.position='';
   const rect=input.getBoundingClientRect();
   const viewport=window.visualViewport;
   const bottom=viewport?viewport.offsetTop+viewport.height:innerHeight;
@@ -429,44 +442,10 @@ function setupSiteBInputHistory(extra=[]){
  host.addEventListener('scroll',reposition,{capture:true,passive:true,signal:controller.signal});
  window.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
- // Keep the dialog geometry fixed. Only the list gets extra scroll room behind the keyboard.
+ // Native page scrolling on mobile; viewport changes only reposition suggestions.
  const vv=window.visualViewport;
- const shade=host.querySelector('#upload-shade');
- const dialog=shade?.querySelector('.card-entry-dialog');
- const list=dialog?.querySelector('.upload-entries');
- const mobile=matchMedia('(max-width:699px)');
- let frame=0,lastInput=null,lastBottom=-1;
- const followViewport=()=>{
-  if(frame)return;
-  frame=requestAnimationFrame(()=>{
-   frame=0;
-   if(controller.signal.aborted)return;
-   if(list&&vv&&mobile.matches){
-    const input=document.activeElement;
-    const bounds=list.getBoundingClientRect();
-    const visibleBottom=Math.min(bounds.bottom,vv.offsetTop+vv.height);
-    const covered=Math.max(0,Math.ceil(bounds.bottom-visibleBottom));
-    list.style.setProperty('--upload-covered',covered+'px');
-    if(input&&list.contains(input)&&input.matches('input:not([type="checkbox"])')&&(input!==lastInput||Math.abs(visibleBottom-lastBottom)>2)){
-     const rect=input.getBoundingClientRect();
-     const top=Math.max(bounds.top,vv.offsetTop)+8;
-     const bottom=visibleBottom-8;
-     if(bottom>top){
-      if(rect.bottom>bottom)list.scrollTop+=rect.bottom-bottom;
-      else if(rect.top<top)list.scrollTop+=rect.top-top;
-     }
-    }
-    lastInput=input;lastBottom=visibleBottom;
-   }else if(list){list.style.removeProperty('--upload-covered');}
-   reposition();
-  });
- };
- vv?.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
- vv?.addEventListener('scroll',followViewport,{passive:true,signal:controller.signal});
- host.addEventListener('focusin',followViewport,{signal:controller.signal});
- window.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
- followViewport();
- controller.signal.addEventListener('abort',()=>cancelAnimationFrame(frame),{once:true});
+ vv?.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
+ vv?.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
 }
 function openUploader(){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です。完了後に追加できます');return;}
@@ -680,6 +659,17 @@ function openUploader(){
    preparing=false;picker.disabled=false;zone.classList.remove('upload-busy');submit.disabled=false;
   }
  };
+ const mobilePage=matchMedia('(max-width:699px)').matches;
+ if(mobilePage){
+  const shade=$('#upload-shade');
+  shade.classList.add('mobile-upload-page');
+  shade.querySelector('section').setAttribute('aria-modal','false');
+  shade.querySelector('section').setAttribute('role','main');
+  const close=$('#upload-close');
+  close.textContent='‹';
+  close.setAttribute('aria-label','フレカ一覧に戻る');
+  window.scrollTo(0,0);
+ }
  $('#upload-close').onclick=dismiss;
  $('#upload-shade').onclick=e=>{if(e.target.id==='upload-shade')dismiss();};
  zone.onclick=()=>picker.click();
