@@ -668,7 +668,7 @@ function openUploader(){
   const close=$('#upload-close');
   close.textContent='‹';
   close.setAttribute('aria-label','フレカ一覧に戻る');
-  window.scrollTo(0,0);
+  window.scrollTo({top:0,behavior:'instant'});
  }
  $('#upload-close').onclick=dismiss;
  $('#upload-shade').onclick=e=>{if(e.target.id==='upload-shade')dismiss();};
