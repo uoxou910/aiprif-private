@@ -429,35 +429,41 @@ function setupSiteBInputHistory(extra=[]){
  host.addEventListener('scroll',reposition,{capture:true,passive:true,signal:controller.signal});
  window.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
- // The viewport alone controls the mobile shell; focus never changes its layout.
+ // Keep the dialog geometry fixed. Only the list gets extra scroll room behind the keyboard.
  const vv=window.visualViewport;
  const shade=host.querySelector('#upload-shade');
  const dialog=shade?.querySelector('.card-entry-dialog');
+ const list=dialog?.querySelector('.upload-entries');
  const mobile=matchMedia('(max-width:699px)');
- let frame=0,lastHeight=-1,lastTop=-1;
+ let frame=0,lastInput=null,lastBottom=-1;
  const followViewport=()=>{
   if(frame)return;
   frame=requestAnimationFrame(()=>{
    frame=0;
    if(controller.signal.aborted)return;
-   if(dialog&&vv&&mobile.matches){
-    const height=Math.max(0,Math.round(vv.height));
-    const top=Math.round(vv.offsetTop);
-    if(height!==lastHeight||top!==lastTop){
-     shade.style.setProperty('--upload-vv-height',height+'px');
-     shade.style.setProperty('--upload-vv-top',top+'px');
-     lastHeight=height;lastTop=top;
+   if(list&&vv&&mobile.matches){
+    const input=document.activeElement;
+    const bounds=list.getBoundingClientRect();
+    const visibleBottom=Math.min(bounds.bottom,vv.offsetTop+vv.height);
+    const covered=Math.max(0,Math.ceil(bounds.bottom-visibleBottom));
+    list.style.setProperty('--upload-covered',covered+'px');
+    if(input&&list.contains(input)&&input.matches('input:not([type="checkbox"])')&&(input!==lastInput||Math.abs(visibleBottom-lastBottom)>2)){
+     const rect=input.getBoundingClientRect();
+     const top=Math.max(bounds.top,vv.offsetTop)+8;
+     const bottom=visibleBottom-8;
+     if(bottom>top){
+      if(rect.bottom>bottom)list.scrollTop+=rect.bottom-bottom;
+      else if(rect.top<top)list.scrollTop+=rect.top-top;
+     }
     }
-   }else if(shade){
-    shade.style.removeProperty('--upload-vv-height');
-    shade.style.removeProperty('--upload-vv-top');
-    lastHeight=-1;lastTop=-1;
-   }
+    lastInput=input;lastBottom=visibleBottom;
+   }else if(list){list.style.removeProperty('--upload-covered');}
    reposition();
   });
  };
  vv?.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
  vv?.addEventListener('scroll',followViewport,{passive:true,signal:controller.signal});
+ host.addEventListener('focusin',followViewport,{signal:controller.signal});
  window.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
  followViewport();
  controller.signal.addEventListener('abort',()=>cancelAnimationFrame(frame),{once:true});
