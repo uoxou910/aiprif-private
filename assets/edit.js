@@ -373,31 +373,20 @@ function setupSiteBInputHistory(extra=[]){
   if(typeof value!=='string')return hide();
   applyingSuggestion=true;
   try{
-   if(document.activeElement!==input)input.focus({preventScroll:true});
-   // Let WebKit's native editor replace text rather than changing .value
-   // behind the Japanese IME. This preserves the active editing session.
-   let nativeInput=false;
-   const observed=()=>{nativeInput=true;};
-   input.addEventListener('input',observed);
-   try{
-    input.setSelectionRange(0,input.value.length);
-    document.execCommand('insertText',false,value);
-   }catch(_){}
-   finally{input.removeEventListener('input',observed);}
-   if(input.value!==value){
-    // If native insertion failed during composition, end the stale IME
-    // session synchronously before replacing text and restoring focus.
-    if(composingInputs.has(input)){
-     input.blur();
-     composingInputs.delete(input);
-     input.focus({preventScroll:true});
-    }
-    input.value=value;
-    nativeInput=false;
+   // End the old IME composition BEFORE assigning the full candidate.
+   // Never let insertText merge the candidate with the composing prefix.
+   const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||
+    (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+   if(composingInputs.has(input)||ios){
+    if(document.activeElement===input)input.blur();
+    composingInputs.delete(input);
    }
-   if(!nativeInput)input.dispatchEvent(new Event('input',{bubbles:true}));
+   input.value=value;
    if(document.activeElement!==input)input.focus({preventScroll:true});
-   input.setSelectionRange(input.value.length,input.value.length);
+   // Focus/IME commit can restore an older prefix, so assign once more.
+   input.value=value;
+   input.setSelectionRange(value.length,value.length);
+   input.dispatchEvent(new Event('input',{bubbles:true}));
   }finally{applyingSuggestion=false;}
   hide();
  };
