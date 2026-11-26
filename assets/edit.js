@@ -315,6 +315,7 @@ function setupSiteBInputHistory(extra=[]){
  popup.hidden=true;
  popup.innerHTML='';
  let current=null,matched=[],selected=-1,applyingSuggestion=false;
+ const composingInputs=new WeakSet();
  const hide=()=>{
   popup.hidden=true;
   popup.innerHTML='';
@@ -369,14 +370,35 @@ function setupSiteBInputHistory(extra=[]){
  const choose=value=>{
   const input=current;
   if(!input?.isConnected)return hide();
+  if(typeof value!=='string')return hide();
   applyingSuggestion=true;
   try{
    if(document.activeElement!==input)input.focus({preventScroll:true});
-   input.value=value;
-   input.dispatchEvent(new Event('input',{bubbles:true}));
+   // Let WebKit's native editor replace text rather than changing .value
+   // behind the Japanese IME. This preserves the active editing session.
+   let nativeInput=false;
+   const observed=()=>{nativeInput=true;};
+   input.addEventListener('input',observed);
+   try{
+    input.setSelectionRange(0,input.value.length);
+    document.execCommand('insertText',false,value);
+   }catch(_){}
+   finally{input.removeEventListener('input',observed);}
+   if(input.value!==value){
+    // If native insertion failed during composition, end the stale IME
+    // session synchronously before replacing text and restoring focus.
+    if(composingInputs.has(input)){
+     input.blur();
+     composingInputs.delete(input);
+     input.focus({preventScroll:true});
+    }
+    input.value=value;
+    nativeInput=false;
+   }
+   if(!nativeInput)input.dispatchEvent(new Event('input',{bubbles:true}));
+   if(document.activeElement!==input)input.focus({preventScroll:true});
+   input.setSelectionRange(input.value.length,input.value.length);
   }finally{applyingSuggestion=false;}
-  if(document.activeElement!==input)input.focus({preventScroll:true});
-  input.setSelectionRange(input.value.length,input.value.length);
   hide();
  };
  const show=input=>{
@@ -432,6 +454,8 @@ function setupSiteBInputHistory(extra=[]){
   input.setAttribute('aria-autocomplete','list');
   input.setAttribute('aria-controls',popup.id);
   input.setAttribute('aria-expanded','false');
+  input.addEventListener('compositionstart',()=>composingInputs.add(input));
+  input.addEventListener('compositionend',()=>{composingInputs.delete(input);if(!applyingSuggestion)show(input);});
   input.addEventListener('input',()=>{if(!applyingSuggestion)show(input);});
   input.addEventListener('focus',()=>{if(!applyingSuggestion)show(input);});
   input.addEventListener('keydown',e=>{
