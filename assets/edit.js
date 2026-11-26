@@ -328,11 +328,16 @@ function setupSiteBInputHistory(extra=[]){
  const position=()=>{
   if(popup.hidden||!current?.isConnected)return;
   const rect=current.getBoundingClientRect();
-  popup.style.left=Math.max(8,rect.left)+'px';
+  const vv=window.visualViewport;
+  const bottom=vv?vv.offsetTop+vv.height:window.innerHeight;
+  popup.style.left=rect.left+'px';
   popup.style.top=(rect.bottom+4)+'px';
-  popup.style.width=Math.min(rect.width,window.innerWidth-16)+'px';
-  const remaining=window.innerHeight-rect.bottom-14;
-  popup.style.maxHeight=Math.max(48,Math.min(222,remaining))+'px';
+  popup.style.width=rect.width+'px';
+  popup.style.maxHeight=Math.max(36,Math.min(214,bottom-rect.bottom-8))+'px';
+  // Correct browser-specific fixed-position offsets after keyboard/viewport movement.
+  const actual=popup.getBoundingClientRect();
+  popup.style.left=(rect.left+(rect.left-actual.left))+'px';
+  popup.style.top=(rect.bottom+4+(rect.bottom+4-actual.top))+'px';
  };
  const highlight=()=>{
   const options=popup.querySelectorAll('[data-site-b-suggest]');
@@ -342,7 +347,8 @@ function setupSiteBInputHistory(extra=[]){
    button.setAttribute('aria-selected',String(active));
    if(active){
     current.setAttribute('aria-activedescendant',button.id);
-    button.scrollIntoView({block:'nearest'});
+    if(button.offsetTop<popup.scrollTop)popup.scrollTop=button.offsetTop;
+    else if(button.offsetTop+button.offsetHeight>popup.scrollTop+popup.clientHeight)popup.scrollTop=button.offsetTop+button.offsetHeight-popup.clientHeight;
    }
   });
   if(selected<0)current?.removeAttribute('aria-activedescendant');
@@ -352,7 +358,7 @@ function setupSiteBInputHistory(extra=[]){
   if(!input?.isConnected)return hide();
   input.value=value;
   input.dispatchEvent(new Event('input',{bubbles:true}));
-  input.focus({preventScroll:true});
+  if(document.activeElement!==input)input.focus({preventScroll:true});
   input.setSelectionRange(input.value.length,input.value.length);
   hide();
  };
@@ -423,6 +429,28 @@ function setupSiteBInputHistory(extra=[]){
  host.addEventListener('scroll',reposition,{capture:true,passive:true,signal:controller.signal});
  window.addEventListener('scroll',reposition,{passive:true,signal:controller.signal});
  window.addEventListener('resize',reposition,{passive:true,signal:controller.signal});
+ const vv=window.visualViewport;
+ let frame=0;
+ const followViewport=()=>{
+  cancelAnimationFrame(frame);
+  frame=requestAnimationFrame(()=>{
+   if(controller.signal.aborted)return;
+   const shade=host.querySelector('.dialog-shade');
+   if(shade&&vv&&matchMedia('(max-width:699px)').matches){
+    shade.style.top=vv.offsetTop+'px';
+    shade.style.bottom='auto';
+    shade.style.height=vv.height+'px';
+    const dialog=shade.querySelector('.card-entry-dialog');
+    if(dialog)dialog.style.maxHeight=Math.max(0,vv.height-40)+'px';
+   }
+   reposition();
+  });
+ };
+ vv?.addEventListener('resize',followViewport,{passive:true,signal:controller.signal});
+ vv?.addEventListener('scroll',followViewport,{passive:true,signal:controller.signal});
+ host.addEventListener('focusin',followViewport,{signal:controller.signal});
+ followViewport();
+ controller.signal.addEventListener('abort',()=>cancelAnimationFrame(frame),{once:true});
 }
 function openUploader(){
  if(siteBUploadInProgress||siteBSaveInProgress){toast('保存処理中です。完了後に追加できます');return;}
