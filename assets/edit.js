@@ -314,7 +314,7 @@ function setupSiteBInputHistory(extra=[]){
  }
  popup.hidden=true;
  popup.innerHTML='';
- let current=null,matched=[],selected=-1;
+ let current=null,matched=[],selected=-1,applyingSuggestion=false;
  const hide=()=>{
   popup.hidden=true;
   popup.innerHTML='';
@@ -369,8 +369,12 @@ function setupSiteBInputHistory(extra=[]){
  const choose=value=>{
   const input=current;
   if(!input?.isConnected)return hide();
-  input.value=value;
-  input.dispatchEvent(new Event('input',{bubbles:true}));
+  applyingSuggestion=true;
+  try{
+   if(document.activeElement!==input)input.focus({preventScroll:true});
+   input.value=value;
+   input.dispatchEvent(new Event('input',{bubbles:true}));
+  }finally{applyingSuggestion=false;}
   if(document.activeElement!==input)input.focus({preventScroll:true});
   input.setSelectionRange(input.value.length,input.value.length);
   hide();
@@ -397,6 +401,24 @@ function setupSiteBInputHistory(extra=[]){
   popup.hidden=false;
   input.setAttribute('aria-expanded','true');
   popup.querySelectorAll('[data-site-b-suggest]').forEach(button=>{
+   button.tabIndex=-1;
+   // Select on a touch tap before Safari transfers focus to the button.
+   let touch=null;
+   button.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1){touch=null;return;}
+    const t=e.touches[0];touch={x:t.clientX,y:t.clientY,id:t.identifier};
+   },{passive:true});
+   button.addEventListener('touchmove',e=>{
+    const t=e.touches[0];
+    if(touch&&(!t||Math.abs(t.clientX-touch.x)>8||Math.abs(t.clientY-touch.y)>8))touch=null;
+   },{passive:true});
+   button.addEventListener('touchcancel',()=>{touch=null;});
+   button.addEventListener('touchend',e=>{
+    if(!touch||!Array.from(e.changedTouches).some(t=>t.identifier===touch.id)){touch=null;return;}
+    touch=null;
+    if(e.cancelable)e.preventDefault();
+    choose(matched[Number(button.dataset.siteBSuggest)]);
+   },{passive:false});
    button.addEventListener('mousedown',e=>e.preventDefault());
    button.addEventListener('click',()=>choose(matched[Number(button.dataset.siteBSuggest)]));
   });
@@ -410,8 +432,8 @@ function setupSiteBInputHistory(extra=[]){
   input.setAttribute('aria-autocomplete','list');
   input.setAttribute('aria-controls',popup.id);
   input.setAttribute('aria-expanded','false');
-  input.addEventListener('input',()=>show(input));
-  input.addEventListener('focus',()=>show(input));
+  input.addEventListener('input',()=>{if(!applyingSuggestion)show(input);});
+  input.addEventListener('focus',()=>{if(!applyingSuggestion)show(input);});
   input.addEventListener('keydown',e=>{
    if(e.isComposing||e.keyCode===229)return;
    if(popup.hidden||input!==current)return;
